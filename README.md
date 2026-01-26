@@ -1,5 +1,9 @@
 # 🧠 PolicyPro
 
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Machine%20Learning](https://img.shields.io/badge/Machine%20Learning-Regression-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 > **Smart Insurance Cost Prediction using Machine Learning** 📊
 
 ## 📘 Overview
@@ -159,4 +163,3 @@ GitHub: [https://github.com/SQUADRON-LEADER](https://github.com/SQUADRON-LEADER)
 ## ⭐ Support
 
 If you found this project useful, please give it a ⭐ on GitHub — it really helps!
-
