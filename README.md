@@ -1,8 +1,14 @@
 # 🧠 PolicyPro
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![Machine%20Learning](https://img.shields.io/badge/Machine%20Learning-Regression-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-blue" />
+  <img src="https://img.shields.io/badge/Machine%20Learning-Regression-orange" />
+  <img src="https://img.shields.io/badge/Streamlit-App-red" />
+  <img src="https://img.shields.io/badge/Status-Active-brightgreen" />
+  <img src="https://img.shields.io/badge/Maintained-Yes-success" />
+  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/badge/Made%20with-%E2%9D%A4-red" />
+</p>
 
 > **Smart Insurance Cost Prediction using Machine Learning** 📊
 
