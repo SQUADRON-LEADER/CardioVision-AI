@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model checkpoints (very large files)
+checkpoints/*.pth
+outputs/*.pth
+
+# Data files
+data/
+*.mat
+*.hea
+
+# Temporary files
+uploads/
+outputs/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

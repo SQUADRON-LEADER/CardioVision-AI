@@ -1,6 +1,0 @@
-Metric,Train,Validation,Test
-Accuracy,98.23%,100.00%,96.72%
-Precision,0.9825,1.0000,0.9754
-Recall,0.9823,1.0000,0.9672
-F1-Score,0.9823,1.0000,0.9668
-AUC (Micro-avg),N/A,N/A,0.9997
