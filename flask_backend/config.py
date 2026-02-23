@@ -22,7 +22,7 @@ class Config:
     
     # Model settings
     BASE_DIR = Path(__file__).parent.parent
-    MODEL_PATH = os.environ.get('MODEL_PATH', str(BASE_DIR / 'checkpoints' / 'best_model.pth'))
+    MODEL_PATH = os.environ.get('MODEL_PATH', str(BASE_DIR / 'checkpoints' / 'best_model_advanced.pth'))
     MODEL_VERSION = '1.0.0'
     
     # Processing settings
