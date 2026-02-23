@@ -15,32 +15,28 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleCNN(nn.Module):
-    """Simplified CNN backbone for feature extraction"""
+    """CNN backbone for feature extraction"""
     
     def __init__(self, input_channels=3):
         super().__init__()
         
         self.features = nn.Sequential(
-            # Block 1 - stride 2
-            nn.Conv2d(input_channels, 64, kernel_size=3, stride=2, padding=1),  # 128x128
+            nn.Conv2d(input_channels, 64, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # 64x64
+            nn.MaxPool2d(kernel_size=2, stride=2),
             
-            # Block 2 - stride 2  
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # 32x32
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # 16x16
+            nn.MaxPool2d(kernel_size=2, stride=2),
             
-            # Block 3 - stride 2
-            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),  # 8x8
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),  # 4x4
+            nn.MaxPool2d(kernel_size=2, stride=2),
             
-            # Block 4 - stride 1
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),  # 4x4
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(512),
             nn.ReLU(inplace=True),
         )
@@ -50,7 +46,11 @@ class SimpleCNN(nn.Module):
 
 
 class ECGDigitizationModel(nn.Module):
-    """ECG Digitization Model - Must match training architecture"""
+    """
+    ECG Digitization Model - Image to Signals
+    Input: ECG image (3, 256, 256)
+    Output: 12-lead signals (12, 1000)
+    """
     
     def __init__(self, num_leads=12, signal_length=1000, lstm_hidden_dim=128, lstm_layers=1):
         super().__init__()
@@ -59,7 +59,7 @@ class ECGDigitizationModel(nn.Module):
         self.lstm_hidden_dim = lstm_hidden_dim
         self.lstm_layers = lstm_layers
         
-        # Vision backbone - simplified CNN
+        # Vision backbone
         self.backbone = SimpleCNN(input_channels=3)
         backbone_channels = 512
         
@@ -74,7 +74,7 @@ class ECGDigitizationModel(nn.Module):
             nn.Dropout(0.2)
         )
         
-        # Sequence decoder - BiLSTM for temporal modeling
+        # Sequence decoder - BiLSTM
         self.sequence_decoder = nn.LSTM(
             input_size=512,
             hidden_size=lstm_hidden_dim,
@@ -84,13 +84,8 @@ class ECGDigitizationModel(nn.Module):
             dropout=0.1 if lstm_layers > 1 else 0
         )
         
-        # Multi-lead output projection
-        lstm_output_size = lstm_hidden_dim * 2  # Bidirectional
-        self.lead_projectors = nn.ModuleList([
-            nn.Linear(lstm_output_size, 1) for _ in range(num_leads)
-        ])
-        
-        # Lead attention mechanism
+        # Lead attention
+        lstm_output_size = lstm_hidden_dim * 2
         self.lead_attention = nn.MultiheadAttention(
             embed_dim=lstm_output_size,
             num_heads=8,
@@ -98,6 +93,7 @@ class ECGDigitizationModel(nn.Module):
             batch_first=True
         )
         
+        # Final projection
         self.final_projection = nn.Sequential(
             nn.Linear(lstm_output_size, 128),
             nn.ReLU(),
@@ -107,27 +103,27 @@ class ECGDigitizationModel(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
         
-        # Extract features from images
-        visual_features = self.backbone(x)  # [B, 512, 4, 4]
+        # Extract visual features
+        visual_features = self.backbone(x)
         
         # Project to sequence format
-        projected_features = self.feature_projection(visual_features)  # [B, 512]
+        projected_features = self.feature_projection(visual_features)
         
         # Expand for sequence generation
         sequence_input = projected_features.unsqueeze(1).expand(
             batch_size, self.signal_length, -1
-        )  # [B, signal_length, 512]
+        )
         
         # Generate sequence with LSTM
-        lstm_output, _ = self.sequence_decoder(sequence_input)  # [B, signal_length, lstm_hidden*2]
+        lstm_output, _ = self.sequence_decoder(sequence_input)
         
         # Apply attention
         attended_output, _ = self.lead_attention(lstm_output, lstm_output, lstm_output)
         
         # Generate multi-lead output
-        output = self.final_projection(attended_output)  # [B, signal_length, num_leads]
+        output = self.final_projection(attended_output)
         
-        # Transpose to match target format [B, num_leads, signal_length]
+        # Transpose to [B, num_leads, signal_length]
         output = output.transpose(1, 2)
         
         return output
@@ -170,7 +166,7 @@ class ModelManager:
                 logger.error(f"Failed to load model checkpoint: {e}")
                 raise
             
-            # Initialize model with correct parameters from training
+            # Initialize digitization model
             self.model = ECGDigitizationModel(
                 num_leads=12,
                 signal_length=1000,
@@ -241,11 +237,13 @@ class ModelManager:
             'version': self.get_model_version(),
             'metadata': self.model_metadata,
             'architecture': {
-                'type': 'CNN-LSTM',
+                'type': 'CNN-LSTM Digitization',
                 'input_size': '(3, 256, 256)',
                 'output_size': '(12, 1000)',
-                'leads': 12,
-                'signal_length': 1000
+                'num_leads': 12,
+                'signal_length': 1000,
+                'task': 'ECG Image to Signal Digitization',
+                'backbone': 'SimpleCNN + BiLSTM + Attention'
             }
         }
     
