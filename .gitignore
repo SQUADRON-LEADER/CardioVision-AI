@@ -15,16 +15,22 @@ env/
 # Model checkpoints (very large files)
 checkpoints/*.pth
 outputs/*.pth
+flask_backend/*.pth
 
 # Data files
 data/
 *.mat
 *.hea
+*.dat
+ptb-xl-a-large-publicly-available-electrocardiography-dataset-1.0.3/
+ecg_data/
 
 # Temporary files
 uploads/
 outputs/
 logs/
+*.log
+flask_backend/ecg_service.log
 
 # IDE
 .vscode/
