@@ -25,9 +25,14 @@ class ECGInferenceEngine:
     SAMPLING_RATE = 500  # Hz
     SIGNAL_DURATION = 2.0  # seconds
     
+    # Classification labels for HybridECGNet
+    CLASS_NAMES = ['Normal', 'Abnormal Heartbeat', 'Myocardial Infarction']
+    
     def __init__(self, model_manager, preprocessor):
         self.model_manager = model_manager
         self.preprocessor = preprocessor
+        self.model_type = None  # Will be detected on first use
+        logger.info(f"Inference engine initialized")
     
     def process_ecg_image(self, image_path: str, request_id: str, options: Dict = None) -> Dict:
         """
@@ -39,11 +44,17 @@ class ECGInferenceEngine:
             options: Processing options
         
         Returns:
-            result: Dict containing signals, metadata, and quality metrics
+            result: Dict containing predictions, metadata, and quality metrics
         """
         start_time = time.time()
         
         try:
+            # Detect model type on first use if not already detected
+            if self.model_type is None:
+                model_info = self.model_manager.get_model_info()
+                self.model_type = model_info.get('metadata', {}).get('architecture', 'ECGDigitizationModel')
+                logger.info(f"Detected model type: {self.model_type}")
+            
             # 1. Preprocess image
             logger.info(f"[{request_id}] Preprocessing image...")
             input_tensor, preprocess_metadata = self.preprocessor.preprocess(image_path, options)
@@ -52,9 +63,16 @@ class ECGInferenceEngine:
             logger.info(f"[{request_id}] Running inference...")
             predictions = self.model_manager.predict(input_tensor)
             
-            # 3. Post-process predictions
-            logger.info(f"[{request_id}] Post-processing predictions...")
-            signals_dict, quality_metrics = self._post_process_predictions(predictions)
+            # 3. Post-process predictions based on model type
+            logger.info(f"[{request_id}] Post-processing predictions (model type: {self.model_type})...")
+            
+            if self.model_type == 'HybridECGNet':
+                # Classification task
+                result_data, quality_metrics = self._post_process_classification(predictions)
+            else:
+                # Digitization task (legacy)
+                signals_dict, quality_metrics = self._post_process_predictions(predictions)
+                result_data = {'signals': signals_dict}
             
             # 4. Calculate processing time
             processing_time = time.time() - start_time
@@ -62,20 +80,29 @@ class ECGInferenceEngine:
             # 5. Compile result
             result = {
                 'request_id': request_id,
-                'signals': signals_dict,
+                **result_data,
                 'metadata': {
                     'image_path': image_path,
                     'processing_time_seconds': round(processing_time, 3),
                     'timestamp': datetime.utcnow().isoformat(),
-                    'sampling_rate_hz': self.SAMPLING_RATE,
-                    'signal_duration_sec': self.SIGNAL_DURATION,
-                    'num_leads': len(self.LEAD_NAMES),
-                    'signal_length': len(signals_dict[self.LEAD_NAMES[0]]),
+                    'model_type': self.model_type,
                     'preprocessing': preprocess_metadata
                 },
                 'quality_metrics': quality_metrics,
                 'status': 'success'
             }
+            
+            # Add additional metadata based on model type
+            if self.model_type == 'HybridECGNet':
+                result['metadata']['task'] = 'classification'
+                result['metadata']['num_classes'] = len(self.CLASS_NAMES)
+            else:
+                result['metadata']['task'] = 'digitization'
+                result['metadata']['sampling_rate_hz'] = self.SAMPLING_RATE
+                result['metadata']['signal_duration_sec'] = self.SIGNAL_DURATION
+                result['metadata']['num_leads'] = len(self.LEAD_NAMES)
+                if 'signals' in result_data:
+                    result['metadata']['signal_length'] = len(result_data['signals'][self.LEAD_NAMES[0]])
             
             logger.info(f"[{request_id}] Processing completed in {processing_time:.3f}s")
             
@@ -84,6 +111,52 @@ class ECGInferenceEngine:
         except Exception as e:
             logger.error(f"[{request_id}] Processing failed: {str(e)}")
             raise
+    
+    def _post_process_classification(self, predictions: torch.Tensor) -> Tuple[Dict, Dict]:
+        """
+        Post-process classification model predictions
+        
+        Args:
+            predictions: Tensor of shape (B, num_classes) - raw logits
+        
+        Returns:
+            classification_results: Dict with predicted class and probabilities
+            quality_metrics: Dict with confidence scores
+        """
+        import torch.nn.functional as F
+        
+        # Apply softmax to get probabilities
+        probabilities = F.softmax(predictions, dim=1)
+        
+        # Get predicted class
+        predicted_class_idx = torch.argmax(probabilities, dim=1).item()
+        predicted_class = self.CLASS_NAMES[predicted_class_idx]
+        
+        # Get confidence score
+        confidence = probabilities[0, predicted_class_idx].item()
+        
+        # Create probability distribution
+        prob_dist = {}
+        for i, class_name in enumerate(self.CLASS_NAMES):
+            prob_dist[class_name] = float(probabilities[0, i].item())
+        
+        classification_results = {
+            'prediction': {
+                'class': predicted_class,
+                'class_index': predicted_class_idx,
+                'confidence': round(confidence * 100, 2),
+                'probability_distribution': prob_dist
+            }
+        }
+        
+        # Calculate quality metrics
+        quality_metrics = {
+            'confidence_score': round(confidence * 100, 2),
+            'prediction_certainty': 'high' if confidence > 0.8 else ('medium' if confidence > 0.5 else 'low'),
+            'entropy': float(-torch.sum(probabilities * torch.log(probabilities + 1e-10)).item())
+        }
+        
+        return classification_results, quality_metrics
     
     def _post_process_predictions(self, predictions: torch.Tensor) -> Tuple[Dict, Dict]:
         """
