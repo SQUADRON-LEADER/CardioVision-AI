@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize components
 model_manager = ModelManager(app.config['MODEL_PATH'])
-preprocessor = ECGImagePreprocessor()
+preprocessor = ECGImagePreprocessor(target_size=app.config['IMAGE_SIZE'])
 inference_engine = ECGInferenceEngine(model_manager, preprocessor)
 
 # Ensure upload folder exists
