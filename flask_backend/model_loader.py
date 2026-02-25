@@ -14,6 +14,169 @@ import traceback
 logger = logging.getLogger(__name__)
 
 
+# ============================================================================
+# NEW: HybridECGNet Architecture from Training Notebook
+# ============================================================================
+
+class ChannelAttention(nn.Module):
+    """Channel Attention Module"""
+    def __init__(self, in_channels, reduction=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_channels, in_channels // reduction, 1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // reduction, in_channels, 1, bias=False)
+        )
+        self.sigmoid = nn.Sigmoid()
+    
+    def forward(self, x):
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = self.sigmoid(avg_out + max_out)
+        return x * out
+
+
+class SpatialAttention(nn.Module):
+    """Spatial Attention Module"""
+    def __init__(self, kernel_size=7):
+        super(SpatialAttention, self).__init__()
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding=kernel_size//2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+    
+    def forward(self, x):
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        out = torch.cat([avg_out, max_out], dim=1)
+        out = self.conv(out)
+        return x * self.sigmoid(out)
+
+
+class CBAM(nn.Module):
+    """Convolutional Block Attention Module"""
+    def __init__(self, in_channels, reduction=16):
+        super(CBAM, self).__init__()
+        self.channel_attention = ChannelAttention(in_channels, reduction)
+        self.spatial_attention = SpatialAttention()
+    
+    def forward(self, x):
+        x = self.channel_attention(x)
+        x = self.spatial_attention(x)
+        return x
+
+
+class ResidualBlock(nn.Module):
+    """Residual Block with Batch Normalization and Attention"""
+    def __init__(self, in_channels, out_channels, stride=1, use_attention=True):
+        super(ResidualBlock, self).__init__()
+        
+        self.conv1 = nn.Conv2d(in_channels, out_channels, 3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        
+        self.conv2 = nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        
+        self.attention = CBAM(out_channels) if use_attention else None
+        
+        # Shortcut connection
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, 1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
+    
+    def forward(self, x):
+        identity = self.shortcut(x)
+        
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        
+        out = self.conv2(out)
+        out = self.bn2(out)
+        
+        if self.attention:
+            out = self.attention(out)
+        
+        out += identity
+        out = self.relu(out)
+        
+        return out
+
+
+class HybridECGNet(nn.Module):
+    """Hybrid CNN for ECG Classification with Attention and Residual Connections"""
+    
+    def __init__(self, num_classes=3, dropout_rate=0.3):
+        super(HybridECGNet, self).__init__()
+        
+        # Initial convolution
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        
+        # Residual blocks with increasing channels
+        self.layer1 = self._make_layer(64, 64, 2, stride=1)
+        self.layer2 = self._make_layer(64, 128, 2, stride=2)
+        self.layer3 = self._make_layer(128, 256, 2, stride=2)
+        self.layer4 = self._make_layer(256, 512, 2, stride=2)
+        
+        # Global pooling
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.maxpool_global = nn.AdaptiveMaxPool2d((1, 1))
+        
+        # Classifier
+        self.dropout = nn.Dropout(dropout_rate)
+        self.fc1 = nn.Linear(512 * 2, 512)  # *2 for avg and max pool concatenation
+        self.bn_fc = nn.BatchNorm1d(512)
+        self.fc2 = nn.Linear(512, num_classes)
+    
+    def _make_layer(self, in_channels, out_channels, num_blocks, stride):
+        layers = []
+        layers.append(ResidualBlock(in_channels, out_channels, stride, use_attention=True))
+        for _ in range(1, num_blocks):
+            layers.append(ResidualBlock(out_channels, out_channels, use_attention=True))
+        return nn.Sequential(*layers)
+    
+    def forward(self, x):
+        # Initial conv
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        
+        # Residual blocks
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        
+        # Global pooling (both avg and max)
+        x_avg = self.avgpool(x)
+        x_max = self.maxpool_global(x)
+        x = torch.cat([x_avg, x_max], dim=1)
+        x = torch.flatten(x, 1)
+        
+        # Classifier
+        x = self.dropout(x)
+        x = self.fc1(x)
+        x = self.bn_fc(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        
+        return x
+
+
+# ============================================================================
+# Original Models (Legacy Support)
+# ============================================================================
+
 class SimpleCNN(nn.Module):
     """CNN backbone for feature extraction"""
     
@@ -152,12 +315,17 @@ class ModelManager:
             # Setup dummy classes for unpickling BEFORE loading
             import sys
             
-            # Create dummy config class that might be in the checkpoint
+            # Create dummy classes that might be in the checkpoint
             class ECGDigitizationConfig:
                 pass
             
-            # Add to __main__ module namespace for unpickling
+            # Add necessary classes to __main__ module namespace for unpickling
             sys.modules['__main__'].ECGDigitizationConfig = ECGDigitizationConfig
+            sys.modules['__main__'].HybridECGNet = HybridECGNet
+            sys.modules['__main__'].ChannelAttention = ChannelAttention
+            sys.modules['__main__'].SpatialAttention = SpatialAttention
+            sys.modules['__main__'].CBAM = CBAM
+            sys.modules['__main__'].ResidualBlock = ResidualBlock
             
             # Load checkpoint with weights_only=False to handle notebook-saved models
             try:
@@ -166,22 +334,45 @@ class ModelManager:
                 logger.error(f"Failed to load model checkpoint: {e}")
                 raise
             
-            # Initialize digitization model
-            self.model = ECGDigitizationModel(
-                num_leads=12,
-                signal_length=1000,
-                lstm_hidden_dim=128,
-                lstm_layers=1
-            )
+            # Detect model architecture and initialize appropriate model
+            model_arch = checkpoint.get('model_architecture', 'ECGDigitizationModel')
+            num_classes = checkpoint.get('num_classes', 3)
             
-            # Load state dict
-            if 'model_state_dict' in checkpoint:
-                self.model.load_state_dict(checkpoint['model_state_dict'])
+            logger.info(f"Detected model architecture: {model_arch}")
+            logger.info(f"Number of classes: {num_classes}")
+            
+            if model_arch == 'HybridECGNet' or 'layer1' in str(checkpoint.get('model_state_dict', {}).keys()):
+                # Load new HybridECGNet model
+                logger.info("Initializing HybridECGNet...")
+                self.model = HybridECGNet(num_classes=num_classes, dropout_rate=0.3)
                 self.model_metadata = {
+                    'architecture': 'HybridECGNet',
+                    'num_classes': num_classes,
+                    'test_accuracy': checkpoint.get('test_accuracy', 'unknown'),
+                    'test_precision': checkpoint.get('test_precision', 'unknown'),
+                    'test_recall': checkpoint.get('test_recall', 'unknown'),
+                    'test_f1': checkpoint.get('test_f1', 'unknown'),
+                    'best_val_accuracy': checkpoint.get('best_val_accuracy', 'unknown'),
+                }
+            else:
+                # Legacy model - Initialize digitization model
+                logger.info("Initializing ECGDigitizationModel (legacy)...")
+                self.model = ECGDigitizationModel(
+                    num_leads=12,
+                    signal_length=1000,
+                    lstm_hidden_dim=128,
+                    lstm_layers=1
+                )
+                self.model_metadata = {
+                    'architecture': 'ECGDigitizationModel',
                     'epoch': checkpoint.get('epoch', 'unknown'),
                     'val_loss': checkpoint.get('val_loss', 'unknown'),
                     'train_loss': checkpoint.get('train_loss', 'unknown'),
                 }
+            
+            # Load state dict
+            if 'model_state_dict' in checkpoint:
+                self.model.load_state_dict(checkpoint['model_state_dict'])
             else:
                 self.model.load_state_dict(checkpoint)
             
@@ -229,14 +420,36 @@ class ModelManager:
         if not self._loaded:
             return {'status': 'not_loaded'}
         
-        return {
+        arch = self.model_metadata.get('architecture', 'unknown')
+        
+        base_info = {
             'status': 'loaded',
             'path': str(self.model_path),
             'device': str(self.device),
             'parameters': self.get_model_parameters(),
             'version': self.get_model_version(),
             'metadata': self.model_metadata,
-            'architecture': {
+        }
+        
+        if arch == 'HybridECGNet':
+            base_info['architecture'] = {
+                'type': 'HybridECGNet - Advanced Classification',
+                'input_size': '(3, 224, 224)',
+                'output_size': f'({self.model_metadata.get("num_classes", 3)} classes)',
+                'num_classes': self.model_metadata.get('num_classes', 3),
+                'class_names': ['Normal', 'Abnormal Heartbeat', 'Myocardial Infarction'],
+                'task': 'ECG Image Classification',
+                'features': [
+                    'Residual Connections',
+                    'Channel & Spatial Attention (CBAM)',
+                    'Multi-scale Feature Extraction',
+                    'Batch Normalization & Dropout'
+                ],
+                'test_accuracy': self.model_metadata.get('test_accuracy', 'N/A'),
+                'test_f1': self.model_metadata.get('test_f1', 'N/A')
+            }
+        else:
+            base_info['architecture'] = {
                 'type': 'CNN-LSTM Digitization',
                 'input_size': '(3, 256, 256)',
                 'output_size': '(12, 1000)',
@@ -245,7 +458,8 @@ class ModelManager:
                 'task': 'ECG Image to Signal Digitization',
                 'backbone': 'SimpleCNN + BiLSTM + Attention'
             }
-        }
+        
+        return base_info
     
     @torch.no_grad()
     def predict(self, input_tensor):
