@@ -1,0 +1,26 @@
+{
+  "name": "cardiovision-ai",
+  "version": "1.0.0",
+  "description": "CardioVision AI - ECG Image Digitization and Classification",
+  "scripts": {
+    "dev": "concurrently --kill-others --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd flask_backend && python app.py",
+    "frontend": "cd frontend && python -m http.server 8000",
+    "start": "npm run dev",
+    "backend-only": "cd flask_backend && python app.py",
+    "frontend-only": "cd frontend && python -m http.server 8000"
+  },
+  "keywords": [
+    "ecg",
+    "medical",
+    "ai",
+    "deep-learning",
+    "flask",
+    "healthcare"
+  ],
+  "author": "SQUADRON-LEADER",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
