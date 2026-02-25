@@ -22,8 +22,9 @@ class Config:
     
     # Model settings
     BASE_DIR = Path(__file__).parent.parent
-    MODEL_PATH = os.environ.get('MODEL_PATH', str(BASE_DIR / 'checkpoints' / 'best_model_advanced.pth'))
-    MODEL_VERSION = '1.0.0'
+    # Updated to use the new HybridECGNet model trained to >90% accuracy
+    MODEL_PATH = os.environ.get('MODEL_PATH', str(BASE_DIR / 'flask_backend' / 'ecg_model_final.pth'))
+    MODEL_VERSION = '2.0.0'  # Updated version for HybridECGNet
     
     # Processing settings
     MAX_BATCH_SIZE = int(os.environ.get('MAX_BATCH_SIZE', 10))
@@ -38,7 +39,7 @@ class Config:
     LEAD_NAMES = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
     
     # Image preprocessing
-    IMAGE_SIZE = (256, 256)
+    IMAGE_SIZE = (224, 224)  # Updated for HybridECGNet
     NORMALIZATION_MEAN = [0.485, 0.456, 0.406]
     NORMALIZATION_STD = [0.229, 0.224, 0.225]
     
