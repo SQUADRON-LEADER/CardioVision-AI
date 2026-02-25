@@ -125,6 +125,39 @@ processBtn.addEventListener('click', async () => {
 function displayResults(data) {
     // Update metrics
     processingTime.textContent = `${data.metadata.processing_time_seconds.toFixed(2)}s`;
+    
+    // Check if this is classification or digitization
+    if (data.metadata.task === 'classification' && data.prediction) {
+        // Classification results
+        displayClassificationResults(data);
+    } else if (data.signals) {
+        // Digitization results (legacy)
+        displayDigitizationResults(data);
+    } else {
+        console.error('Unknown result format:', data);
+        alert('Received unexpected result format from server');
+    }
+    
+    // Show results
+    results.classList.remove('hidden');
+}
+
+// Display classification results
+function displayClassificationResults(data) {
+    const prediction = data.prediction;
+    
+    // Update quality score with confidence
+    qualityScore.textContent = prediction.confidence + '%';
+    
+    // Update leads count with class name
+    leadsCount.textContent = prediction.class;
+    
+    // Draw classification visualization
+    drawClassificationChart(prediction);
+}
+
+// Display digitization results
+function displayDigitizationResults(data) {
     qualityScore.textContent = data.quality_metrics?.quality_score 
         ? (data.quality_metrics.quality_score * 100).toFixed(1) + '%'
         : 'N/A';
@@ -132,9 +165,67 @@ function displayResults(data) {
     
     // Draw signal chart
     drawSignalChart(data.signals);
+}
+
+// Draw classification chart
+function drawClassificationChart(prediction) {
+    const ctx = signalChart.getContext('2d');
+    const width = signalChart.width;
+    const height = signalChart.height;
     
-    // Show results
-    results.classList.remove('hidden');
+    // Clear canvas
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('ECG Classification Result', width / 2, 50);
+    
+    // Predicted class
+    ctx.font = 'bold 32px Inter';
+    const classColors = {
+        'Normal': '#10b981',
+        'Abnormal Heartbeat': '#f59e0b',
+        'Myocardial Infarction': '#ef4444'
+    };
+    ctx.fillStyle = classColors[prediction.class] || '#ffffff';
+    ctx.fillText(prediction.class, width / 2, 120);
+    
+    // Confidence
+    ctx.font = '20px Inter';
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillText(`Confidence: ${prediction.confidence}%`, width / 2, 160);
+    
+    // Probability distribution bars
+    ctx.textAlign = 'left';
+    ctx.font = '16px Inter';
+    const startY = 220;
+    const barMaxWidth = width - 100;
+    const barHeight = 30;
+    const barSpacing = 50;
+    
+    Object.entries(prediction.probability_distribution).forEach(([className, prob], idx) => {
+        const y = startY + (idx * barSpacing);
+        
+        // Label
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(className, 50, y);
+        
+        // Bar background
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(50, y + 5, barMaxWidth, barHeight);
+        
+        // Bar foreground
+        const barWidth = prob * barMaxWidth;
+        ctx.fillStyle = classColors[className] || '#6366f1';
+        ctx.fillRect(50, y + 5, barWidth, barHeight);
+        
+        // Percentage text
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`${(prob * 100).toFixed(1)}%`, 50 + barWidth + 10, y + 25);
+    });
 }
 
 // Draw signal chart (simple visualization)
@@ -218,26 +309,52 @@ downloadJSON.addEventListener('click', () => {
 downloadCSV.addEventListener('click', () => {
     if (!currentResults) return;
     
-    // Convert signals to CSV
-    const signals = currentResults.signals;
-    const leadNames = Object.keys(signals);
-    const signalLength = signals[leadNames[0]].length;
-    
-    let csv = 'Time(s),' + leadNames.join(',') + '\n';
-    
-    for (let i = 0; i < signalLength; i++) {
-        const time = (i / currentResults.metadata.sampling_rate_hz).toFixed(4);
-        const values = leadNames.map(lead => signals[lead][i].toFixed(6));
-        csv += time + ',' + values.join(',') + '\n';
+    // Check if this is classification or digitization
+    if (currentResults.prediction) {
+        // Classification CSV
+        const prediction = currentResults.prediction;
+        let csv = 'ECG Classification Results\n\n';
+        csv += 'Predicted Class,' + prediction.class + '\n';
+        csv += 'Confidence (%),' + prediction.confidence + '\n\n';
+        csv += 'Class,Probability\n';
+        
+        Object.entries(prediction.probability_distribution).forEach(([className, prob]) => {
+            csv += className + ',' + (prob * 100).toFixed(2) + '%\n';
+        });
+        
+        csv += '\nMetadata\n';
+        csv += 'Processing Time (s),' + currentResults.metadata.processing_time_seconds + '\n';
+        csv += 'Timestamp,' + currentResults.metadata.timestamp + '\n';
+        
+        const dataBlob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ecg_classification_${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    } else if (currentResults.signals) {
+        // Digitization CSV (original)
+        const signals = currentResults.signals;
+        const leadNames = Object.keys(signals);
+        const signalLength = signals[leadNames[0]].length;
+        
+        let csv = 'Time(s),' + leadNames.join(',') + '\n';
+        
+        for (let i = 0; i < signalLength; i++) {
+            const time = (i / currentResults.metadata.sampling_rate_hz).toFixed(4);
+            const values = leadNames.map(lead => signals[lead][i].toFixed(6));
+            csv += time + ',' + values.join(',') + '\n';
+        }
+        
+        const dataBlob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ecg_signals_${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
     }
-    
-    const dataBlob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ecg_signals_${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
 });
 
 // New upload
