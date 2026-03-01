@@ -22,6 +22,8 @@ yarn-error.log*
 checkpoints/*.pth
 outputs/*.pth
 flask_backend/*.pth
+digitization_checkpoints/*.pth
+digitization_checkpoints_effnet/*.pth
 
 # Data files
 data/
