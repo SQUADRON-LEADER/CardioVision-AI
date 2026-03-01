@@ -16,7 +16,7 @@ echo [1/3] Activating virtual environment...
 call .venv\Scripts\activate.bat
 
 echo [2/3] Starting Flask backend...
-cd flask_backend
+cd backend
 start "CardioVision Backend" cmd /k "python app.py"
 cd ..
 

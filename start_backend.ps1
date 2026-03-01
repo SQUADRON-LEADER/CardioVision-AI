@@ -4,7 +4,7 @@ Write-Host "  CardioVision AI - Starting Backend" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-Set-Location flask_backend
+Set-Location backend
 
 Write-Host "Activating virtual environment..." -ForegroundColor Yellow
 if (Test-Path "..\.venv\Scripts\Activate.ps1") {

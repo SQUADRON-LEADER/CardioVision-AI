@@ -48,7 +48,7 @@ Extract 12-lead time-series signals from ECG images:
 ├── ECG_Digitization_Model.py               # 🆕 Digitization model architectures
 ├── ECG_Digitization_Dataset.py             # 🆕 PTB-XL dataset loaders
 ├── train_digitization.py                   # 🆕 Training script
-├── flask_backend/                          # 🔥 Backend API (Unified)
+├── backend/                          # 🔥 Backend API (Unified)
 │   ├── app.py                              # ✅ Flask server (dual mode)
 │   ├── config.py                           # ✅ MODEL_PATHS configuration
 │   ├── model_loader_unified.py             # 🆕 Unified model manager
@@ -112,7 +112,7 @@ source .venv/bin/activate       # Linux/Mac
 
 3. **Install dependencies:**
 ```bash
-pip install -r flask_backend/requirements.txt
+pip install -r backend/requirements.txt
 pip install wfdb  # For digitization mode
 ```
 
@@ -131,7 +131,7 @@ This will:
 
 **Backend Server:**
 ```bash
-cd flask_backend
+cd backend
 python app.py
 ```
 → Server runs at `http://localhost:5000`
@@ -165,7 +165,7 @@ python app.py
 ## 📊 Training Models
 
 ### Classification Model (HybridECGNet)
-Already trained! Model file: `flask_backend/ecg_model_final.pth`
+Already trained! Model file: `backend/ecg_model_final.pth`
 
 ### Digitization Model (Train Required)
 
@@ -188,7 +188,7 @@ start_digitization_training.bat  # Windows
 **After Training:**
 ```bash
 # Copy trained model to backend
-copy checkpoints\best_model_digitization.pth flask_backend\
+copy checkpoints\best_model_digitization.pth backend\
 ```
 
 See [TESTING_GUIDE.md](TESTING_GUIDE.md) for detailed training instructions.

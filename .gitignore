@@ -21,7 +21,7 @@ yarn-error.log*
 # Model checkpoints (very large files)
 checkpoints/*.pth
 outputs/*.pth
-flask_backend/*.pth
+backend/*.pth
 digitization_checkpoints/*.pth
 digitization_checkpoints_effnet/*.pth
 

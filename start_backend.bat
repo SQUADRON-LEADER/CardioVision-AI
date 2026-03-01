@@ -4,7 +4,7 @@ echo   CardioVision AI - Starting Backend
 echo ============================================
 echo.
 
-cd flask_backend
+cd backend
 
 echo Activating virtual environment...
 if exist "..\\.venv\\Scripts\\activate.bat" (
