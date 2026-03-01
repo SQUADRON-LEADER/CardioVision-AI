@@ -22,9 +22,21 @@ class Config:
     
     # Model settings
     BASE_DIR = Path(__file__).parent.parent
-    # Updated to use the new HybridECGNet model trained to >90% accuracy
-    MODEL_PATH = os.environ.get('MODEL_PATH', str(BASE_DIR / 'flask_backend' / 'ecg_model_final.pth'))
-    MODEL_VERSION = '2.0.0'  # Updated version for HybridECGNet
+    
+    # Support both classification and digitization models
+    MODEL_PATHS = {
+        'classification': os.environ.get('CLASSIFICATION_MODEL', 
+                                        str(BASE_DIR / 'flask_backend' / 'ecg_model_final.pth')),
+        'digitization': os.environ.get('DIGITIZATION_MODEL',
+                                      str(BASE_DIR / 'flask_backend' / 'best_model_digitization.pth'))
+    }
+    
+    # Legacy single model path (for backward compatibility)
+    MODEL_PATH = MODEL_PATHS['classification']
+    MODEL_VERSION = '3.0.0'  # Updated to support both tasks
+    
+    # Default task (what to use if not specified)
+    DEFAULT_TASK = os.environ.get('DEFAULT_TASK', 'digitization')  # 'classification' or 'digitization'
     
     # Processing settings
     MAX_BATCH_SIZE = int(os.environ.get('MAX_BATCH_SIZE', 10))

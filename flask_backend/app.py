@@ -21,6 +21,16 @@ from preprocessing import ECGImagePreprocessor
 from config import Config
 from flask.json.provider import DefaultJSONProvider
 
+# Try to import unified components (for dual task support)
+try:
+    from model_loader_unified import ModelManager as UnifiedModelManager
+    from inference_unified import UnifiedECGInferenceEngine
+    UNIFIED_AVAILABLE = True
+    logger.info("Unified model system available")
+except ImportError:
+    UNIFIED_AVAILABLE = False
+    logger.warning("Unified model system not available, using legacy system")
+
 # Dummy class for unpickling notebook-saved models
 class ECGDigitizationConfig:
     """Dummy config class for unpickling training checkpoint"""
@@ -55,13 +65,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize components
-model_manager = ModelManager(app.config['MODEL_PATH'])
 preprocessor = ECGImagePreprocessor(target_size=app.config['IMAGE_SIZE'])
-inference_engine = ECGInferenceEngine(model_manager, preprocessor)
 
-# Ensure upload folder exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+# Use unified system if available, otherwise legacy
+if UNIFIED_AVAILABLE and hasattr(app.config, 'MODEL_PATHS'):
+    logger.info("Using unified model system (supports both classification & digitization)")
+    model_manager = UnifiedModelManager(app.config['MODEL_PATHS'])
+    inference_engine = UnifiedECGInferenceEngine(model_manager, preprocessor)
+else:
+    logger.info("Using legacy model system (classification only)")
+    model_manager = ModelMAnalysis Service (Classification & Digitization)...")
+if UNIFIED_AVAILABLE:
+    logger.info(f"Model paths: {app.config['MODEL_PATHS']}")
+else:
+    logger.info(f"Model path: {app.config['MODEL_PATH']}")
+logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+try:
+    if UNIFIED_AVAILABLE:
+        model_manager.load_model('auto')  # Load all available models
+        available = model_manager.get_available_models()
+        logger.info(f"Models loaded: {', '.join(available)}")
+    else:
+        model_manager.load_model()
+    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 # Load model at startup (before handling any requests)
 logger.info("Starting ECG Digitization Service...")
@@ -121,34 +147,55 @@ def health_check():
 @app.route('/api/v1/info', methods=['GET'])
 def get_service_info():
     """Get service information and capabilities"""
+    
+    # Detect available models
+    available_models = []
+    if UNIFIED_AVAILABLE:
+        available_models = model_manager.get_available_models()
+    else:
+        available_models = ['classification']  # Legacy system
+    
     info = {
-        'service_name': 'ECG Image Digitization Service',
-        'version': '1.0.0',
-        'description': 'Converts ECG images to digital time-series signals',
+        'service_name': 'CardioVision AI - ECG Analysis Service',
+        'version': app.config['MODEL_VERSION'],
+        'description': 'AI-powered ECG image analysis supporting classification and digitization',
+        'available_tasks': available_models,
+        'default_task': app.config.get('DEFAULT_TASK', 'digitization'),
         'capabilities': {
+            'classification': {
+                'enabled': 'classification' in available_models,
+                'classes': ['Normal', 'Abnormal Heartbeat', 'Myocardial Infarction'],
+                'description': 'Diagnose cardiac conditions from ECG images'
+            },
+            'digitization': {
+                'enabled': 'digitization' in available_models,
+                'output_leads': 12,
+                'signal_length': 1000,
+                'sampling_rate_hz': 500,
+                'signal_duration_sec': 2.0,
+                'description': 'Convert ECG images to digital time-series signals'
+            },
             'supported_formats': list(app.config['ALLOWED_EXTENSIONS']),
             'max_file_size_mb': app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024),
-            'output_leads': 12,
-            'signal_length': 1000,
-            'sampling_rate_hz': 500,
-            'signal_duration_sec': 2.0
         },
         'model_info': {
-            'architecture': 'CNN-LSTM',
-            'version': model_manager.get_model_version(),
-            'parameters': model_manager.get_model_parameters(),
-            'trained_on': '84 ECG samples with various conditions'
+            'architectures': {
+                'classification': 'HybridECGNet (ResNet34 + CBAM Attention)',
+                'digitization': 'AdvancedECGDigitizationModel (ResNet50 + Multi-Head Attention)'
+            },
+            'version': model_manager.get_model_version() if hasattr(model_manager, 'get_model_version') else 'N/A',
+            'parameters': model_manager.get_model_parameters() if hasattr(model_manager, 'get_model_parameters') else 'N/A',
         },
         'preprocessing': {
             'techniques': [
-                'Grid line removal',
+                'CLAHE contrast enhancement',
                 'Noise reduction',
                 'Skew correction',
                 'Rotation correction',
-                'Illumination normalization',
-                'Adaptive thresholding'
+                'Grid line removal (optional)',
+                'Illumination normalization'
             ],
-            'image_size': '256x256',
+            'image_size': f"{app.config['IMAGE_SIZE'][0]}×{app.config['IMAGE_SIZE'][1]}",
             'normalization': 'ImageNet mean/std'
         }
     }
@@ -158,10 +205,11 @@ def get_service_info():
 @app.route('/api/v1/digitize', methods=['POST'])
 def digitize_ecg():
     """
-    Main endpoint for ECG image digitization
+    Main endpoint for ECG analysis (classification OR digitization)
     
     Request:
         - file: ECG image file (jpg, jpeg, png)
+        - task: 'classification' or 'digitization' (default: from config)
         - options: JSON object with processing options (optional)
             - remove_grid: bool (default: True)
             - denoise: bool (default: True)
@@ -172,7 +220,9 @@ def digitize_ecg():
         - success: bool
         - data: {
             - request_id: str
-            - signals: dict of 12-lead ECG signals
+            - task: str
+            - prediction: dict (if classification)
+            - signals: dict (if digitization)
             - metadata: processing metadata
             - quality_metrics: signal quality indicators
           }
@@ -208,6 +258,9 @@ def digitize_ecg():
             import json
             options = json.loads(request.form['options'])
         
+        # Get task type (classification or digitization)
+        task = request.form.get('task', app.config.get('DEFAULT_TASK', 'digitization'))
+        
         # Generate request ID
         request_id = str(uuid.uuid4())
         
@@ -218,22 +271,31 @@ def digitize_ecg():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], saved_filename)
         file.save(filepath)
         
-        logger.info(f"Processing request {request_id} for file: {filename}")
+        logger.info(f"Processing request {request_id} for file: {filename}, task: {task}")
         
         # Run inference
-        result = inference_engine.process_ecg_image(
-            image_path=filepath,
-            request_id=request_id,
-            options=options
-        )
+        if UNIFIED_AVAILABLE:
+            result = inference_engine.process_ecg_image(
+                image_path=filepath,
+                request_id=request_id,
+                task=task,
+                options=options
+            )
+        else:
+            # Legacy system - only supports classification
+            result = inference_engine.process_ecg_image(
+                image_path=filepath,
+                request_id=request_id,
+                options=options
+            )
         
         # Save output if requested
         output_format = options.get('output_format', 'json')
-        if output_format != 'json':
-            output_path = inference_engine.save_output(
-                result, 
-                format=output_format,
-                output_dir=app.config['OUTPUT_FOLDER']
+        if output_format != 'json' and 'signals' in result:
+            output_path = inference_engine.export_signals(
+                result['signals'],
+                os.path.join(app.config['OUTPUT_FOLDER'], f"{request_id}_signals"),
+                format=output_format
             )
             result['output_file'] = output_path
         
