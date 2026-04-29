@@ -1,15 +1,21 @@
 // API Configuration
-const API_URL = 'http://localhost:5000/api/v1';
+const isBackendOrigin = window.location.port === '5000';
+const API_URL = isBackendOrigin
+    ? `${window.location.origin}/api/v1`
+    : 'http://localhost:5000/api/v1';
 
 // DOM Elements
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
 const previewImage = document.getElementById('previewImage');
-const taskSelector = document.getElementById('taskSelector');
+const taskInputs = document.querySelectorAll('input[name="task"]');
 const processBtn = document.getElementById('processBtn');
 const loading = document.getElementById('loading');
 const results = document.getElementById('results');
+const errorAlert = document.getElementById('errorAlert');
+const errorMessage = document.getElementById('errorMessage');
+const closeError = document.getElementById('closeError');
 const downloadJSON = document.getElementById('downloadJSON');
 const downloadCSV = document.getElementById('downloadCSV');
 const newUpload = document.getElementById('newUpload');
@@ -20,19 +26,47 @@ const digitizationResults = document.getElementById('digitizationResults');
 
 let currentFile = null;
 let currentResults = null;
-let currentTask = 'digitization';
+let currentTask = 'pipeline';
+let isProcessing = false;
+let activeFileToken = 0;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    // Set initial task
-    if (taskSelector) {
-        taskSelector.addEventListener('change', (e) => {
-            currentTask = e.target.value;
-            console.log('Task changed to:', currentTask);
+    if (taskInputs && taskInputs.length > 0) {
+        taskInputs.forEach((input) => {
+            input.addEventListener('change', (e) => {
+                currentTask = e.target.value;
+            });
         });
-        currentTask = taskSelector.value;
+        const checked = document.querySelector('input[name="task"]:checked');
+        currentTask = checked ? checked.value : 'pipeline';
+    }
+    
+    // Close error button
+    if (closeError) {
+        closeError.addEventListener('click', (e) => {
+            e.preventDefault();
+            errorAlert.classList.add('hidden');
+        });
     }
 });
+
+// Helper function to show error
+function showError(message) {
+    if (errorMessage) {
+        errorMessage.textContent = message;
+    }
+    if (errorAlert) {
+        errorAlert.classList.remove('hidden');
+    }
+}
+
+// Helper function to hide error
+function hideError() {
+    if (errorAlert) {
+        errorAlert.classList.add('hidden');
+    }
+}
 
 // Drop zone click handler
 dropZone.addEventListener('click', () => {
@@ -66,36 +100,61 @@ function handleFile(file) {
     
     // Validate file type
     if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        showError('Please upload an image file');
         return;
     }
     
     // Validate file size (16MB)
     if (file.size > 16 * 1024 * 1024) {
-        alert('File size must be less than 16MB');
+        showError('File size must be less than 16MB');
         return;
     }
     
     currentFile = file;
+    currentResults = null;
+    isProcessing = false;
+    if (processBtn) {
+        processBtn.disabled = false;
+    }
+    activeFileToken += 1;
+    const fileToken = activeFileToken;
+
+    // Hide stale results and errors
+    results.classList.add('hidden');
+    loading.classList.add('hidden');
+    hideError();
     
     // Show preview
     const reader = new FileReader();
     reader.onload = (e) => {
+        // Ignore stale reads from older selections.
+        if (fileToken !== activeFileToken) return;
+
         previewImage.src = e.target.result;
-        preview.classList.remove('hidden');
-        results.classList.add('hidden');
+
+        // Don't let late image-read callbacks overwrite post-processing UI.
+        if (!isProcessing) {
+            preview.classList.remove('hidden');
+        }
     };
     reader.readAsDataURL(file);
 }
 
 // Process ECG image
-processBtn.addEventListener('click', async () => {
+processBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
     if (!currentFile) return;
+    if (isProcessing) return;
+    isProcessing = true;
+    if (processBtn) {
+        processBtn.disabled = true;
+    }
     
-    // Show loading
+    // Show loading and hide other elements
     loading.classList.remove('hidden');
     preview.classList.add('hidden');
     results.classList.add('hidden');
+    hideError();
     
     try {
         // Create form data
@@ -113,12 +172,15 @@ processBtn.addEventListener('click', async () => {
             method: 'POST',
             body: formData
         });
+
+        const responseBody = await response.json().catch(() => null);
         
         if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
+            const backendMessage = responseBody?.error || responseBody?.message;
+            throw new Error(backendMessage || `Server error: ${response.status}`);
         }
-        
-        const result = await response.json();
+
+        const result = responseBody;
         
         if (!result.success) {
             throw new Error(result.error || 'Processing failed');
@@ -128,6 +190,10 @@ processBtn.addEventListener('click', async () => {
         
         // Hide loading
         loading.classList.add('hidden');
+        isProcessing = false;
+        if (processBtn) {
+            processBtn.disabled = false;
+        }
         
         // Display results based on task
         displayResults(currentResults);
@@ -135,42 +201,101 @@ processBtn.addEventListener('click', async () => {
     } catch (error) {
         console.error('Error:', error);
         loading.classList.add('hidden');
-        alert(`Error: ${error.message}`);
+        isProcessing = false;
+        if (processBtn) {
+            processBtn.disabled = false;
+        }
+        // Restore preview so UI doesn't appear empty after a failed render/request.
+        preview.classList.remove('hidden');
+        results.classList.add('hidden');
+        showError(error.message);
     }
 });
 
 // Display results
 function displayResults(data) {
+    if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response payload from server');
+    }
+
     results.classList.remove('hidden');
+    preview.classList.add('hidden');
     
     // Update metadata
     if (data.metadata) {
-        document.getElementById('processingTime').textContent = 
-            `${data.metadata.processing_time_seconds.toFixed(2)}s`;
+        const processingTimeEl = document.getElementById('processingTime');
+        const processingSeconds = Number(
+            data.metadata.processing_time_seconds ?? data.metadata.processing_time
+        );
+        if (processingTimeEl) {
+            processingTimeEl.textContent = Number.isFinite(processingSeconds)
+                ? `${processingSeconds.toFixed(2)}s`
+                : '--';
+        }
     }
     
+    const modeDisplay = document.getElementById('modeDisplay');
+    const inferredTask = data.task
+        || data.metadata?.task
+        || ((data.prediction && data.signals) ? 'pipeline' : (data.prediction ? 'classification' : (data.signals ? 'digitization' : 'pipeline')));
+    if (modeDisplay) {
+        modeDisplay.textContent = inferredTask;
+    }
+
     // Display based on task
-    if (data.task === 'classification') {
+    if ((inferredTask === 'pipeline') || (data.prediction && data.signals)) {
+        displayPipelineResults(data);
+    } else if (inferredTask === 'classification') {
         displayClassificationResults(data);
-    } else if (data.task === 'digitization') {
+    } else if (inferredTask === 'digitization') {
         displayDigitizationResults(data);
     }
 }
 
-// Display classification results
-function displayClassificationResults(data) {
+function createConfidenceBar(label, confidence) {
+    const percent = (confidence * 100).toFixed(1);
+    const bar = document.createElement('div');
+    bar.className = 'mb-3';
+    bar.innerHTML = `
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-sm text-neutral-400">${label}</span>
+        </div>
+        <div class="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
+            <div class="bg-red-600 h-full rounded-full" style="width: ${percent}%"></div>
+        </div>
+    `;
+    return bar;
+}
+
+function displayPipelineResults(data) {
+    // Show both sections together.
     if (classificationResults) {
         classificationResults.classList.remove('hidden');
     }
     if (digitizationResults) {
+        digitizationResults.classList.remove('hidden');
+    }
+
+    displayClassificationResults(data, { keepDigitizationVisible: true });
+    displayDigitizationResults(data, { keepClassificationVisible: true });
+}
+
+// Display classification results
+function displayClassificationResults(data, opts = {}) {
+    if (classificationResults) {
+        classificationResults.classList.remove('hidden');
+    }
+    if (digitizationResults && !opts.keepDigitizationVisible) {
         digitizationResults.classList.add('hidden');
     }
     
-    const pred = data.prediction;
+    const pred = data?.prediction;
+    if (!pred) {
+        return;
+    }
     
     // Update prediction
     const predictionClass = document.getElementById('predictionClass');
-    const predictionConfidence = document.getElementById('predictionConfidence');
     
     if (predictionClass) {
         predictionClass.textContent = pred.class;
@@ -183,10 +308,6 @@ function displayClassificationResults(data) {
         } else {
             predictionClass.className = 'text-2xl font-bold text-red-400';
         }
-    }
-    
-    if (predictionConfidence) {
-        predictionConfidence.textContent = `${pred.confidence}%`;
     }
     
     // Update probability distribution
@@ -212,18 +333,12 @@ function displayClassificationResults(data) {
         });
     }
     
-    // Update quality metrics
-    if (data.quality_metrics) {
-        const qualityScore = document.getElementById('qualityScore');
-        if (qualityScore) {
-            qualityScore.textContent = data.quality_metrics.confidence_score + '%';
-        }
-    }
+
 }
 
 // Display digitization results
-function displayDigitizationResults(data) {
-    if (classificationResults) {
+function displayDigitizationResults(data, opts = {}) {
+    if (classificationResults && !opts.keepClassificationVisible) {
         classificationResults.classList.add('hidden');
     }
     if (digitizationResults) {
@@ -236,21 +351,19 @@ function displayDigitizationResults(data) {
         const signalLength = document.getElementById('signalLength');
         
         if (samplingRate) {
-            samplingRate.textContent = `${data.metadata.sampling_rate_hz} Hz`;
+            const rate = data.metadata.sampling_rate_hz ?? data.sampling_rate_hz;
+            samplingRate.textContent = rate ? `${rate} Hz` : '--';
         }
         if (signalLength) {
-            signalLength.textContent = `${data.metadata.signal_length} samples`;
+            const length = data.metadata.signal_length ?? data.num_samples;
+            signalLength.textContent = length ? `${length} samples` : '--';
         }
     }
     
-    // Update quality
+    // Update other metrics
     if (data.quality_metrics) {
-        const qualityScore = document.getElementById('qualityScore');
         const avgSNR = document.getElementById('avgSNR');
         
-        if (qualityScore) {
-            qualityScore.textContent = data.quality_metrics.overall_quality || 'Good';
-        }
         if (avgSNR && data.quality_metrics.average_snr_db) {
             avgSNR.textContent = `${data.quality_metrics.average_snr_db.toFixed(1)} dB`;
         }
@@ -264,6 +377,10 @@ function displayDigitizationResults(data) {
 
 // Plot ECG signals using Plotly
 function plotECGSignals(signals) {
+    if (typeof Plotly === 'undefined') {
+        throw new Error('Plot library not loaded. Please refresh and try again.');
+    }
+
     const leadNames = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
     const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899',
                     '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#a855f7', '#eab308'];
@@ -272,35 +389,80 @@ function plotECGSignals(signals) {
     const signalChart = document.getElementById('signalChart');
     if (!signalChart) return;
     
-    signalChart.innerHTML = '<div id="ecgPlot" class="w-full" style="height: 800px;"></div>';
-    
-    // Prepare data for Plotly
-    const traces = [];
-    
-    leadNames.forEach((lead, idx) => {
-        if (signals[lead]) {
-            const signal = signals[lead];
-            const x = Array.from({length: signal.length}, (_, i) => i);
-            
-            traces.push({
-                x: x,
-                y: signal,
-                type: 'scatter',
-                mode: 'lines',
-                name: `Lead ${lead}`,
-                line: {
-                    color: colors[idx],
-                    width: 1.5
-                },
-                yaxis: `y${idx + 1}`
-            });
-        }
+    signalChart.innerHTML = '<div id="ecgPlot" class="w-full" style="height: 900px;"></div>';
+
+    const getLeadSignal = (lead) => {
+        if (Array.isArray(signals[lead])) return signals[lead];
+        const foundKey = Object.keys(signals).find((k) => k.toLowerCase() === lead.toLowerCase());
+        return foundKey ? signals[foundKey] : null;
+    };
+
+    const availableLeadData = leadNames
+        .map((lead) => ({ lead, data: getLeadSignal(lead) }))
+        .filter((entry) => Array.isArray(entry.data) && entry.data.length > 0);
+
+    if (availableLeadData.length === 0) {
+        throw new Error('No ECG lead data found in response');
+    }
+
+    // Compute a stable vertical spacing so all leads are visible.
+    let maxAbs = 0;
+    availableLeadData.forEach((entry) => {
+        entry.data.forEach((v) => {
+            const n = Number(v);
+            if (Number.isFinite(n)) {
+                maxAbs = Math.max(maxAbs, Math.abs(n));
+            }
+        });
     });
-    
-    // Layout with stacked subplots
+    const offsetStep = Math.max(maxAbs * 3, 2);
+
+    const traces = [];
+    const annotations = [];
+
+    availableLeadData.forEach((entry, idx) => {
+        const leadIndex = leadNames.indexOf(entry.lead);
+        const color = colors[Math.max(0, leadIndex) % colors.length];
+        const signal = entry.data.map((v) => Number(v) || 0);
+        const x = Array.from({ length: signal.length }, (_, i) => i);
+
+        // Keep lead I at top and V6 at bottom.
+        const verticalOffset = (availableLeadData.length - 1 - idx) * offsetStep;
+        const y = signal.map((v) => v + verticalOffset);
+
+        traces.push({
+            x,
+            y,
+            type: 'scatter',
+            mode: 'lines',
+            name: `Lead ${entry.lead}`,
+            line: {
+                color,
+                width: 1.2
+            },
+            hovertemplate: `Lead ${entry.lead}<br>Sample %{x}<br>Value %{y:.3f}<extra></extra>`
+        });
+
+        annotations.push({
+            x: 0,
+            y: verticalOffset,
+            xref: 'x',
+            yref: 'y',
+            text: entry.lead,
+            showarrow: false,
+            xanchor: 'right',
+            align: 'right',
+            xshift: -8,
+            font: {
+                color,
+                size: 11
+            }
+        });
+    });
+
     const layout = {
         title: {
-            text: '12-Lead ECG Signals',
+            text: `12-Lead ECG Signals (${availableLeadData.length} leads)`,
             font: {
                 color: '#fff',
                 size: 20,
@@ -315,30 +477,22 @@ function plotECGSignals(signals) {
             y: -0.15,
             font: { color: '#999' }
         },
-        grid: {
-            rows: 12,
-            columns: 1,
-            pattern: 'independent',
-            roworder: 'top to bottom'
-        },
         xaxis: {
             title: { text: 'Sample', font: { color: '#999' } },
             gridcolor: '#1a1a1a',
-            color: '#666'
-        },
-        margin: { t: 60, b: 100, l: 60, r: 40 }
-    };
-    
-    // Configure each y-axis
-    for (let i = 0; i < 12; i++) {
-        layout[`yaxis${i === 0 ? '' : i + 1}`] = {
-            title: { text: leadNames[i], font: { color: colors[i], size: 10 } },
-            gridcolor: '#1a1a1a',
             color: '#666',
-            zeroline: true,
-            zerolinecolor: '#333'
-        };
-    }
+            zeroline: false
+        },
+        yaxis: {
+            title: { text: 'Amplitude (stacked)', font: { color: '#999' } },
+            gridcolor: '#141414',
+            color: '#666',
+            showticklabels: false,
+            zeroline: false
+        },
+        annotations,
+        margin: { t: 60, b: 100, l: 90, r: 20 }
+    };
     
     const config = {
         responsive: true,
@@ -401,11 +555,17 @@ if (downloadCSV) {
 
 // New upload
 if (newUpload) {
-    newUpload.addEventListener('click', () => {
+    newUpload.addEventListener('click', (e) => {
+        e.preventDefault();
         currentFile = null;
         currentResults = null;
-        preview.classList.add('hidden');
+        isProcessing = false;
+        if (processBtn) {
+            processBtn.disabled = false;
+        }
+        preview.classList.remove('hidden');
         results.classList.add('hidden');
+        loading.classList.add('hidden');
         fileInput.value = '';
     });
 }

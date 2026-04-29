@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CardioVision AI - ECG Digitization</title>
+    <title>CardioVision AI - ECG Analysis & Digitization</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +15,6 @@
 <body class="overflow-x-hidden selection:bg-red-900 selection:text-white text-white bg-[#050505] opacity-90 relative">
     
     <!-- ========================================= BACKGROUND ANIMATION ========================================= -->
-    <!-- 1. WebGL Fluid Animation (Unicorn Studio) -->
     <div class="fixed top-0 w-full h-screen -z-10 hue-rotate-90 pointer-events-none" 
          style="mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent); 
                 -webkit-mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)">
@@ -36,7 +36,6 @@
         </div>
     </div>
 
-    <!-- 2. CSS Gradient Glow Effects -->
     <div class="fixed top-0 w-full h-screen mix-blend-lighten pointer-events-none -z-20">
         <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.15),transparent_50%)]"></div>
         <div class="absolute top-[20%] left-[20%] w-96 h-96 bg-red-900/10 blur-[100px] rounded-full mix-blend-screen animate-pulse duration-[4s]"></div>
@@ -47,7 +46,6 @@
     <!-- Navigation -->
     <header class="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
         <nav class="w-full max-w-5xl bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 rounded-lg px-2 py-2 flex items-center justify-between shadow-2xl shadow-black/50">
-            <!-- Logo -->
             <div class="flex items-center gap-2 px-2">
                 <div class="w-8 h-8 rounded bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_15px_rgba(220,38,38,0.5)]">
                     <iconify-icon icon="solar:heart-pulse-bold"></iconify-icon>
@@ -55,14 +53,12 @@
                 <span class="font-semibold tracking-tight text-white">CardioVision AI</span>
             </div>
             
-            <!-- Links -->
             <div class="hidden md:flex items-center gap-8">
                 <a href="#home" class="text-sm font-medium text-neutral-400 hover:text-white transition-colors duration-300">Home</a>
                 <a href="#features" class="text-sm font-medium text-neutral-400 hover:text-white transition-colors duration-300">Features</a>
                 <a href="#upload" class="text-sm font-medium text-neutral-400 hover:text-white transition-colors duration-300">Upload</a>
             </div>
             
-            <!-- CTA -->
             <div>
                 <a href="#upload" class="group flex items-center gap-2 bg-transparent border border-white/10 hover:border-white/20 hover:bg-white/5 rounded px-5 py-2 transition-all duration-300">
                     <span class="text-xs font-semibold tracking-wide uppercase text-neutral-200 group-hover:text-white">Get Started</span>
@@ -74,32 +70,28 @@
 
     <!-- Hero Section -->
     <section id="home" class="flex flex-col min-h-screen pt-32 pb-10 relative items-center justify-center px-4">
-        <!-- Status Badge -->
         <div class="mb-10 animate-fade-in-down">
             <div class="inline-flex transition-transform hover:scale-105 cursor-default border-white/10 border rounded-full pt-1.5 pr-4 pb-1.5 pl-4 shadow-[0_0_15px_rgba(0,0,0,0.5)] backdrop-blur-sm gap-x-2 gap-y-2 items-center">
                 <span class="relative flex h-2 w-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                 </span>
-                <span class="text-sm text-neutral-300 font-medium tracking-wide">AI-Powered ECG Analysis</span>
+                <span class="text-sm text-neutral-300 font-medium tracking-wide">AI-Powered ECG Analysis & Digitization</span>
             </div>
         </div>
 
-        <!-- Hero Headline -->
         <div class="max-w-6xl mx-auto text-center space-y-2 mb-10">
             <h1 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight leading-[1.1] md:leading-[1.1] animate-fade-in-down delay-100">
-                <span class="text-transparent bg-clip-text bg-gradient-to-b from-neutral-200 to-neutral-600">Analyze</span>
+                <span class="text-transparent bg-clip-text bg-gradient-to-b from-neutral-200 to-neutral-600">Analyze & Digitize</span>
                 <span class="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.15)] relative z-10"> ECG Images</span>
                 <span class="block text-transparent bg-clip-text bg-gradient-to-b from-neutral-200 to-neutral-600">with AI Precision</span>
             </h1>
         </div>
 
-        <!-- Subheadline -->
         <p class="max-w-2xl mx-auto text-center text-lg md:text-xl text-neutral-400 font-normal leading-relaxed mb-16 tracking-wide animate-fade-in-down delay-200">
-            Advanced deep learning model for ECG image classification and analysis with clinical-grade accuracy.
+            Advanced deep learning for ECG classification and signal digitization with clinical-grade accuracy.
         </p>
 
-        <!-- Action Buttons -->
         <div class="flex flex-col md:flex-row items-center gap-6 animate-fade-in-down delay-300">
             <a href="#upload" class="group relative px-8 py-3.5 bg-neutral-900 border border-white/10 hover:border-red-500/50 rounded overflow-hidden transition-all duration-300 w-full md:w-auto">
                 <div class="absolute inset-0 bg-gradient-to-t from-red-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -108,12 +100,6 @@
                     <iconify-icon icon="solar:arrow-right-up-linear" class="text-neutral-400 group-hover:text-red-400 transition-colors text-lg"></iconify-icon>
                 </div>
             </a>
-            <button class="group relative px-8 py-3.5 bg-transparent border border-white/10 hover:border-white/30 hover:bg-white/[0.02] rounded transition-all duration-300 w-full md:w-auto">
-                <div class="relative flex items-center justify-center gap-2">
-                    <span class="text-sm font-semibold tracking-widest uppercase text-white">Learn More</span>
-                    <iconify-icon icon="solar:arrow-right-linear" class="text-neutral-400 group-hover:translate-x-1 transition-transform text-lg"></iconify-icon>
-                </div>
-            </button>
         </div>
     </section>
 
@@ -124,10 +110,10 @@
             <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
                 <div>
                     <h2 class="text-5xl md:text-7xl font-semibold text-white tracking-tight mb-6">
-                        Powerful <span class="text-red-600">Digitization</span>
+                        Dual-Mode <span class="text-red-600">AI System</span>
                     </h2>
                     <p class="text-lg text-neutral-400 max-w-xl leading-relaxed">
-                        State-of-the-art technology for accurate ECG signal extraction from medical printouts.
+                        Classification for diagnosis + Digitization for signal extraction.
                     </p>
                 </div>
             </div>
@@ -139,11 +125,11 @@
                 <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-neutral-800/20 blur-[80px] rounded-full group-hover:bg-neutral-800/30 transition-all"></div>
                 <div class="relative z-10">
                     <div class="w-12 h-12 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center mb-6">
-                        <iconify-icon icon="solar:bolt-linear" class="text-white text-2xl"></iconify-icon>
+                        <iconify-icon icon="solar:health-linear" class="text-white text-2xl"></iconify-icon>
                     </div>
-                    <h3 class="text-xl font-semibold text-white mb-2">12-Lead Extraction</h3>
+                    <h3 class="text-xl font-semibold text-white mb-2">ECG Classification</h3>
                     <p class="text-sm text-neutral-400 mb-6">
-                        Extracts all 12 ECG leads (I, II, III, aVR, aVL, aVF, V1-V6) with high fidelity and accuracy.
+                        Diagnose Normal, Abnormal Heartbeat, and Myocardial Infarction.
                     </p>
                 </div>
             </div>
@@ -155,9 +141,9 @@
                     <div class="w-12 h-12 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center mb-6">
                         <iconify-icon icon="solar:chart-2-linear" class="text-white text-2xl"></iconify-icon>
                     </div>
-                    <h3 class="text-xl font-semibold text-white mb-2">Real-time Processing</h3>
+                    <h3 class="text-xl font-semibold text-white mb-2">12-Lead Digitization</h3>
                     <p class="text-sm text-neutral-400 mb-6">
-                        Fast inference with quality metrics and signal validation in seconds, not minutes.
+                        Extract all 12 ECG leads (I, II, III, aVR, aVL, aVF, V1-V6) as time-series signals.
                     </p>
                 </div>
             </div>
@@ -167,11 +153,11 @@
                 <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-neutral-800/20 blur-[80px] rounded-full group-hover:bg-neutral-800/30 transition-all"></div>
                 <div class="relative z-10">
                     <div class="w-12 h-12 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center mb-6">
-                        <iconify-icon icon="solar:download-minimalistic-linear" class="text-white text-2xl"></iconify-icon>
+                        <iconify-icon icon="solar:bolt-linear" class="text-white text-2xl"></iconify-icon>
                     </div>
-                    <h3 class="text-xl font-semibold text-white mb-2">Multiple Formats</h3>
+                    <h3 class="text-xl font-semibold text-white mb-2">Real-time Processing</h3>
                     <p class="text-sm text-neutral-400 mb-6">
-                        Export signals as JSON, CSV, or WFDB format for seamless integration with clinical systems.
+                        Fast inference with quality metrics and signal validation in seconds.
                     </p>
                 </div>
             </div>
@@ -179,71 +165,116 @@
     </section>
 
     <!-- Upload Section -->
-    <section id="upload" class="py-20 px-4 relative z-10">
+    <section id="upload" class="max-w-7xl mx-auto px-4 py-12 md:py-24 relative z-10">
+        <div class="mb-12">
+            <span class="text-red-600 font-mono text-xs font-semibold tracking-widest uppercase mb-4 block">02. Upload</span>
+            <h2 class="text-4xl md:text-6xl font-semibold text-white tracking-tight mb-4">
+                Analyze Your <span class="text-red-600">ECG</span>
+            </h2>
+            <p class="text-lg text-neutral-400 max-w-2xl">
+                Upload an ECG image and choose your analysis mode - Classification for diagnosis or Digitization for signal extraction.
+            </p>
+        </div>
+
         <div class="max-w-4xl mx-auto">
-            <div class="mb-12">
-                <span class="text-red-600 font-mono text-xs font-semibold tracking-widest uppercase mb-4 block">02. Upload</span>
-                <h2 class="text-4xl md:text-6xl font-semibold text-white tracking-tight mb-4">
-                    Digitize Your <span class="text-red-600">ECG</span>
-                </h2>
-                <p class="text-lg text-neutral-400 leading-relaxed">
-                    Upload your ECG printout and get digital signals instantly with clinical precision.
-                </p>
-            </div>
-            
-            <div class="relative bg-[#080808] border border-white/10 rounded-2xl p-8 overflow-hidden group">
-                <div class="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 bg-red-900/10 blur-[120px] rounded-full group-hover:bg-red-900/20 transition-all duration-700"></div>
+            <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl p-8">
                 
-                <div class="relative z-10">
-                    <div id="dropZone" class="border-2 border-dashed border-white/20 rounded-xl p-12 text-center hover:border-red-500/50 hover:bg-white/[0.02] transition-all duration-300 cursor-pointer group/drop">
-                        <div class="w-16 h-16 mx-auto mb-6 rounded-xl bg-neutral-900 border border-white/10 flex items-center justify-center group-hover/drop:border-red-500/50 transition-colors">
-                            <iconify-icon icon="solar:cloud-upload-linear" class="text-neutral-400 group-hover/drop:text-red-500 text-3xl transition-colors"></iconify-icon>
-                        </div>
-                        <p class="text-lg font-semibold mb-2 text-white">Drop ECG image here or click to browse</p>
-                        <p class="text-sm text-neutral-500">Supports JPG, PNG (max 16MB)</p>
-                        <input type="file" id="fileInput" accept="image/*" class="hidden">
-                    </div>
-                    
-                    <div id="preview" class="mt-8 hidden animate-fade-in-down">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-white">Preview</h3>
-                            <span class="text-xs text-neutral-500 font-mono">Ready to process</span>
-                        </div>
-                        <div class="relative rounded-xl overflow-hidden border border-white/10 mb-6">
-                            <img id="previewImage" class="w-full" alt="ECG Preview">
-                        </div>
-                        <button id="processBtn" class="group w-full px-8 py-4 bg-neutral-900 border border-white/10 hover:border-red-500/50 rounded-xl font-semibold transition-all duration-300 relative overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-t from-red-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div class="relative flex items-center justify-center gap-2">
-                                <iconify-icon icon="solar:play-circle-linear" class="text-xl"></iconify-icon>
-                                <span>Process ECG Image</span>
+                <!-- Task Selector -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-white mb-4">Analysis Mode</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label class="group relative flex-1">
+                            <input type="radio" name="task" value="pipeline" id="taskPipeline" class="peer sr-only" checked>
+                            <div class="cursor-pointer p-5 rounded-xl border-2 border-white/10 peer-checked:border-red-500 peer-checked:bg-red-500/10 bg-[#050505] hover:border-white/20 transition-all">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <iconify-icon icon="solar:chart-square-linear" class="text-2xl text-neutral-400 peer-checked:group-[]:text-red-400"></iconify-icon>
+                                    <span class="font-semibold text-white">Pipeline</span>
+                                </div>
+                                <p class="text-xs text-neutral-500">Digitize first, then predict disease</p>
                             </div>
+                        </label>
+
+                        <label class="group relative flex-1">
+                            <input type="radio" name="task" value="classification" id="taskClassification" class="peer sr-only">
+                            <div class="cursor-pointer p-5 rounded-xl border-2 border-white/10 peer-checked:border-red-500 peer-checked:bg-red-500/10 bg-[#050505] hover:border-white/20 transition-all">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <iconify-icon icon="solar:health-bold" class="text-2xl text-neutral-400 peer-checked:group-[]:text-red-400"></iconify-icon>
+                                    <span class="font-semibold text-white">Classification</span>
+                                </div>
+                                <p class="text-xs text-neutral-500">Diagnose heart conditions</p>
+                            </div>
+                        </label>
+                        
+                        <label class="group relative flex-1">
+                            <input type="radio" name="task" value="digitization" id="taskDigitization" class="peer sr-only">
+                            <div class="cursor-pointer p-5 rounded-xl border-2 border-white/10 peer-checked:border-red-500 peer-checked:bg-red-500/10 bg-[#050505] hover:border-white/20 transition-all">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <iconify-icon icon="solar:chart-2-bold" class="text-2xl text-neutral-400 peer-checked:group-[]:text-red-400"></iconify-icon>
+                                    <span class="font-semibold text-white">Digitization</span>
+                                </div>
+                                <p class="text-xs text-neutral-500">Extract 12-lead signals</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Drop Zone -->
+                <div id="dropZone" class="group cursor-pointer relative p-12 border-2 border-dashed border-white/20 hover:border-white/40 rounded-2xl transition-all duration-300 bg-[#050505] hover:bg-white/[0.02]">
+                    <input type="file" id="fileInput" class="hidden" accept="image/*">
+                    <div class="flex flex-col items-center justify-center text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <iconify-icon icon="solar:cloud-upload-linear" class="text-white text-3xl"></iconify-icon>
+                        </div>
+                        <h3 class="text-xl font-semibold text-white mb-2">Drop ECG image here</h3>
+                        <p class="text-sm text-neutral-400 mb-4">or click to browse</p>
+                        <p class="text-xs text-neutral-600 font-mono">Supports: PNG, JPEG, JPG (Max 16MB)</p>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div id="preview" class="hidden mt-6">
+                    <div class="relative rounded-xl overflow-hidden border border-white/10">
+                        <img id="previewImage" class="w-full" alt="ECG Preview">
+                    </div>
+                    <button type="button" id="processBtn" class="w-full mt-6 group relative px-8 py-4 bg-red-600 hover:bg-red-500 rounded-xl transition-all duration-300 overflow-hidden">
+                        <div class="relative flex items-center justify-center gap-3">
+                            <iconify-icon icon="solar:cpu-bolt-linear" class="text-white text-xl"></iconify-icon>
+                            <span class="text-sm font-bold tracking-widest uppercase text-white">Process ECG</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Loading -->
+                <div id="loading" class="hidden mt-6 text-center p-12">
+                    <div class="inline-flex items-center gap-3 mb-4">
+                        <div class="w-3 h-3 bg-red-500 rounded-full animate-bounce"></div>
+                        <div class="w-3 h-3 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-3 h-3 bg-red-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <p class="text-neutral-400 font-medium">Processing ECG image...</p>
+                </div>
+
+                <!-- Error Alert -->
+                <div id="errorAlert" class="hidden mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                    <div class="flex items-start gap-3">
+                        <iconify-icon icon="solar:danger-linear" class="text-red-400 text-xl flex-shrink-0 mt-0.5"></iconify-icon>
+                        <div class="flex-1">
+                            <p class="font-semibold text-red-300 mb-1">Error Processing ECG</p>
+                            <p id="errorMessage" class="text-sm text-red-200"></p>
+                        </div>
+                        <button type="button" id="closeError" class="text-red-400 hover:text-red-300 flex-shrink-0">
+                            <iconify-icon icon="solar:close-circle-linear" class="text-xl"></iconify-icon>
                         </button>
                     </div>
-                    
-                    <div id="loading" class="mt-8 hidden text-center py-12">
-                        <div class="relative inline-block">
-                            <div class="w-16 h-16 border-4 border-neutral-800 border-t-red-500 rounded-full animate-spin"></div>
-                            <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-red-600/30 rounded-full animate-spin" style="animation-duration: 1.5s;"></div>
-                        </div>
-                        <p class="mt-6 text-neutral-400 font-medium">Processing ECG image...</p>
-                        <p class="mt-2 text-sm text-neutral-600">Extracting 12-lead signals</p>
-                    </div>
-                    
-                    <div id="results" class="mt-8 hidden animate-fade-in-down">
-                        <div class="flex items-center justify-between mb-6">
-                            <h3 class="text-2xl font-semibold text-white">Analysis Results</h3>
-                            <div class="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
-                                <span class="relative flex h-2 w-2">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                </span>
-                                <span class="text-xs text-green-400 font-semibold">Success</span>
-                            </div>
-                        </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" class="hidden mt-8">
+                    <div class="relative overflow-hidden rounded-2xl border border-white/10 bg-[#050505] p-8">
                         
-                        <div class="grid md:grid-cols-3 gap-4 mb-6">
-                            <div class="relative p-5 bg-[#050505] border border-white/10 rounded-xl overflow-hidden group/card">
+                        <!-- Common Metadata -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="relative p-5 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden group/card">
                                 <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-blue-900/10 blur-[40px] rounded-full group-hover/card:bg-blue-900/20 transition-all"></div>
                                 <div class="relative">
                                     <div class="flex items-center gap-2 mb-2">
@@ -253,47 +284,74 @@
                                     <p id="processingTime" class="text-2xl font-semibold text-white">--</p>
                                 </div>
                             </div>
-                            <div class="relative p-5 bg-[#050505] border border-white/10 rounded-xl overflow-hidden group/card">
-                                <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-green-900/10 blur-[40px] rounded-full group-hover/card:bg-green-900/20 transition-all"></div>
-                                <div class="relative">
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <iconify-icon icon="solar:star-linear" class="text-neutral-500 text-lg"></iconify-icon>
-                                        <p class="text-xs text-neutral-500 font-medium uppercase tracking-wider">Confidence</p>
-                                    </div>
-                                    <p id="qualityScore" class="text-2xl font-semibold text-white">--</p>
-                                </div>
-                            </div>
-                            <div class="relative p-5 bg-[#050505] border border-white/10 rounded-xl overflow-hidden group/card">
+
+                            <div class="relative p-5 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden group/card">
                                 <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-red-900/10 blur-[40px] rounded-full group-hover/card:bg-red-900/20 transition-all"></div>
                                 <div class="relative">
                                     <div class="flex items-center gap-2 mb-2">
                                         <iconify-icon icon="solar:chart-2-linear" class="text-neutral-500 text-lg"></iconify-icon>
-                                        <p class="text-xs text-neutral-500 font-medium uppercase tracking-wider">Classification</p>
+                                        <p class="text-xs text-neutral-500 font-medium uppercase tracking-wider">Mode</p>
                                     </div>
-                                    <p id="leadsCount" class="text-2xl font-semibold text-white">12</p>
+                                    <p id="modeDisplay" class="text-2xl font-semibold text-white">--</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="relative p-6 bg-[#050505] border border-white/10 rounded-xl mb-6 overflow-hidden">
-                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500/50 to-transparent"></div>
-                            <div class="flex items-center justify-between mb-4">
-                                <h4 class="font-semibold text-white">Visualization</h4>
-                                <span class="text-xs text-neutral-500 font-mono">AI Analysis</span>
+                        <!-- Classification Results -->
+                        <div id="classificationResults" class="hidden">
+                            <div class="relative p-6 bg-[#0a0a0a] border border-white/10 rounded-xl mb-6">
+                                <div class="text-center mb-6">
+                                    <p class="text-sm text-neutral-500 uppercase tracking-wider mb-2">Diagnosis</p>
+                                    <p id="predictionClass" class="text-4xl font-bold text-white mb-2">--</p>
+                                </div>
+                                <div class="mt-6">
+                                    <p class="text-sm text-neutral-400 mb-4 font-semibold">Probability Distribution</p>
+                                    <div id="probabilityBars"></div>
+                                </div>
                             </div>
-                            <canvas id="signalChart" class="w-full" width="800" height="400"></canvas>
+                        </div>
+
+                        <!-- Digitization Results -->
+                        <div id="digitizationResults" class="hidden">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div class="p-4 bg-[#0a0a0a] border border-white/10 rounded-xl text-center">
+                                    <p class="text-xs text-neutral-500 uppercase mb-1">Sampling Rate</p>
+                                    <p id="samplingRate" class="text-lg font-bold text-white">--</p>
+                                </div>
+                                <div class="p-4 bg-[#0a0a0a] border border-white/10 rounded-xl text-center">
+                                    <p class="text-xs text-neutral-500 uppercase mb-1">Signal Length</p>
+                                    <p id="signalLength" class="text-lg font-bold text-white">--</p>
+                                </div>
+                                <div class="p-4 bg-[#0a0a0a] border border-white/10 rounded-xl text-center">
+                                    <p class="text-xs text-neutral-500 uppercase mb-1">Avg SNR</p>
+                                    <p id="avgSNR" class="text-lg font-bold text-white">--</p>
+                                </div>
+                                <div class="p-4 bg-[#0a0a0a] border border-white/10 rounded-xl text-center">
+                                    <p class="text-xs text-neutral-500 uppercase mb-1">Leads</p>
+                                    <p class="text-lg font-bold text-white">12</p>
+                                </div>
+                            </div>
+                            
+                            <div class="relative p-6 bg-[#0a0a0a] border border-white/10 rounded-xl mb-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="font-semibold text-white">12-Lead ECG Signals</h4>
+                                    <span class="text-xs text-neutral-500 font-mono">Digitized Output</span>
+                                </div>
+                                <div id="signalChart"></div>
+                            </div>
                         </div>
                         
+                        <!-- Action Buttons -->
                         <div class="grid md:grid-cols-3 gap-4">
-                            <button id="downloadJSON" class="group flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl font-semibold transition-all">
+                            <button type="button" id="downloadJSON" class="group flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl font-semibold transition-all">
                                 <iconify-icon icon="solar:file-text-linear" class="text-neutral-400 group-hover:text-white transition-colors"></iconify-icon>
-                                <span>JSON</span>
+                                <span>Download JSON</span>
                             </button>
-                            <button id="downloadCSV" class="group flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl font-semibold transition-all">
+                            <button type="button" id="downloadCSV" class="group flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl font-semibold transition-all">
                                 <iconify-icon icon="solar:document-linear" class="text-neutral-400 group-hover:text-white transition-colors"></iconify-icon>
-                                <span>CSV</span>
+                                <span>Download CSV</span>
                             </button>
-                            <button id="newUpload" class="group flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-semibold transition-all">
+                            <button type="button" id="newUpload" class="group flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-semibold transition-all">
                                 <iconify-icon icon="solar:restart-linear" class="text-white group-hover:rotate-180 transition-transform duration-500"></iconify-icon>
                                 <span>New Upload</span>
                             </button>
@@ -314,11 +372,11 @@
                 <span class="text-lg font-semibold text-white">CardioVision AI</span>
             </div>
             <p class="text-neutral-500 text-sm">
-                © 2024 CardioVision AI. Advanced ECG Digitization Platform.
+                © 2026 CardioVision AI. Advanced ECG Analysis & Digitization Platform.
             </p>
         </div>
     </footer>
 
-    <script src="app.js"></script>
+    <script src="app_enhanced.js"></script>
 </body>
 </html>
