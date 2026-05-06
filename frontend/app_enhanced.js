@@ -252,21 +252,6 @@ function displayResults(data) {
     }
 }
 
-function createConfidenceBar(label, confidence) {
-    const percent = (confidence * 100).toFixed(1);
-    const bar = document.createElement('div');
-    bar.className = 'mb-3';
-    bar.innerHTML = `
-        <div class="flex justify-between items-center mb-2">
-            <span class="text-sm text-neutral-400">${label}</span>
-        </div>
-        <div class="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
-            <div class="bg-red-600 h-full rounded-full" style="width: ${percent}%"></div>
-        </div>
-    `;
-    return bar;
-}
-
 function displayPipelineResults(data) {
     // Show both sections together.
     if (classificationResults) {
@@ -278,6 +263,17 @@ function displayPipelineResults(data) {
 
     displayClassificationResults(data, { keepDigitizationVisible: true });
     displayDigitizationResults(data, { keepClassificationVisible: true });
+
+    const qualityScore = document.getElementById('qualityScore');
+    const clsConf = data.prediction?.confidence;
+    const sigQuality = data.quality_metrics?.overall_quality;
+    if (qualityScore) {
+        if (clsConf && sigQuality) {
+            qualityScore.textContent = `${clsConf}% / ${sigQuality}`;
+        } else if (clsConf) {
+            qualityScore.textContent = `${clsConf}%`;
+        }
+    }
 }
 
 // Display classification results
@@ -296,6 +292,7 @@ function displayClassificationResults(data, opts = {}) {
     
     // Update prediction
     const predictionClass = document.getElementById('predictionClass');
+    const predictionConfidence = document.getElementById('predictionConfidence');
     
     if (predictionClass) {
         predictionClass.textContent = pred.class;
@@ -308,6 +305,10 @@ function displayClassificationResults(data, opts = {}) {
         } else {
             predictionClass.className = 'text-2xl font-bold text-red-400';
         }
+    }
+    
+    if (predictionConfidence) {
+        predictionConfidence.textContent = `${pred.confidence}%`;
     }
     
     // Update probability distribution
@@ -333,7 +334,13 @@ function displayClassificationResults(data, opts = {}) {
         });
     }
     
-
+    // Update quality metrics
+    if (data.quality_metrics) {
+        const qualityScore = document.getElementById('qualityScore');
+        if (qualityScore) {
+            qualityScore.textContent = data.quality_metrics.confidence_score + '%';
+        }
+    }
 }
 
 // Display digitization results
@@ -360,10 +367,14 @@ function displayDigitizationResults(data, opts = {}) {
         }
     }
     
-    // Update other metrics
+    // Update quality
     if (data.quality_metrics) {
+        const qualityScore = document.getElementById('qualityScore');
         const avgSNR = document.getElementById('avgSNR');
         
+        if (qualityScore) {
+            qualityScore.textContent = data.quality_metrics.overall_quality || 'Good';
+        }
         if (avgSNR && data.quality_metrics.average_snr_db) {
             avgSNR.textContent = `${data.quality_metrics.average_snr_db.toFixed(1)} dB`;
         }

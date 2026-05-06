@@ -1,389 +1,298 @@
-# CardioVision-AI
+# ❤️ CardioVision-AI
 
-An advanced ECG analysis platform with **dual-mode AI** - Classification for diagnosis + Digitization for signal extraction.
+> **AI-Powered Cardiovascular Risk Detection & Clinical Decision Support System**
 
-## 🎯 Overview
+CardioVision-AI is an intelligent healthcare platform designed to assist in **early detection, risk stratification, and clinical insight generation** for cardiovascular diseases (CVD). By combining **machine learning models**, **data-driven analytics**, and a **modern web interface**, the system aims to bridge the gap between raw medical data and actionable insights.
 
-CardioVision-AI is a comprehensive electrocardiogram (ECG) analysis platform offering two powerful AI modes:
+---
 
-### 🩺 Classification Mode
-Diagnose cardiac conditions using HybridECGNet architecture:
-- ✅ **Normal ECG patterns**
-- ✅ **Abnormal heartbeat patterns**
-- ✅ **Myocardial Infarction (Heart Attack)**
+## 🌍 Why CardioVision-AI?
 
-### 📊 Digitization Mode  
-Extract 12-lead time-series signals from ECG images:
-- ✅ **12-Lead Signal Extraction** (I, II, III, aVR, aVL, aVF, V1-V6)
-- ✅ **PhysioNet Competition Ready** (PTB-XL dataset compatible)
-- ✅ **Quality Metrics** (SNR, signal validation)
-- ✅ **Multiple Export Formats** (JSON, CSV, WFDB)
+Cardiovascular diseases remain one of the **leading causes of death worldwide**. Early diagnosis is critical, yet many cases go undetected due to:
 
-## ✨ Features
+* Lack of accessible screening tools
+* Delayed diagnosis
+* Limited data interpretation support
 
-- **🤖 Dual AI Models**: Classification (HybridECGNet) + Digitization (AdvancedECGNet)
-- **📊 Real-time Processing**: Upload ECG images and receive instant results
-- **🎨 Modern Web Interface**: Interactive signal visualization with Plotly.js
-- **🔌 REST API**: Flask backend with unified model management
-- **📈 High Performance**: GPU acceleration support, <2s inference
-- **💾 Export Options**: JSON, CSV downloads for further analysis
-- **📓 Jupyter Training**: Complete training notebook for digitization model
+💡 **CardioVision-AI solves this by:**
 
-## 🏗️ Architecture
+* Automating risk prediction using ML
+* Providing instant, interpretable outputs
+* Enabling scalable and accessible healthcare support
 
-### Classification Mode: HybridECGNet
-- **Architecture**: ResNet34 + CBAM Attention
-- **Parameters**: ~35M parameters
-- **Input**: 224×224 RGB images
-- **Output**: 3-class classification with confidence scores
-- **Features**: Residual blocks, channel/spatial attention, dropout regularization
+---
 
-### Digitization Mode: AdvancedECGDigitizationModel
-- **Architecture**: ResNet50 encoder + Multi-head Attention + Per-lead Decoders
-- **Parameters**: ~55M parameters  
-- **Input**: 224×224 RGB images
-- **Output**: 12 leads × 1000 samples per lead
-- **Loss Function**: Combined MSE +         # Legacy main application
-├── ECG_Digitization_Complete_Training.ipynb # 🆕 Full training notebook
-├── ECG_Digitization_Model.py               # 🆕 Digitization model architectures
-├── ECG_Digitization_Dataset.py             # 🆕 PTB-XL dataset loaders
-├── train_digitization.py                   # 🆕 Training script
-├── backend/                          # 🔥 Backend API (Unified)
-│   ├── app.py                              # ✅ Flask server (dual mode)
-│   ├── config.py                           # ✅ MODEL_PATHS configuration
-│   ├── model_loader_unified.py             # 🆕 Unified model manager
-│   ├── inference_unified.py                # 🆕 Unified inference engine
-│   ├── inference.py                        # Legacy classification inference
-│   ├── model_loader.py                     # Legacy HybridECGNet loader
-│   ├── preprocessing.py                    # Image preprocessing
-│   ├── ecg_model_final.pth                 # Classification model
-│   └── best_model_digitization.pth         # 🆕 Digitization model (train first)
-├── frontend/                               # 🎨 Web Interface (Dual Mode)
-│   ├── index_enhanced.html                 # 🆕 Dual-mode UI with task selector
-│   ├── app_enhanced.js                     # 🆕 Dual-mode logic + Plotly signals
-│   ├── index.html                          # Legacy UI (classification only)
-│   ├── app.js                              # Legacy JavaScript
-│   └── styles.css                          # Shared styles
-├── outputs/                                # Training outputs
-├── checkpoints/                            # Model checkpoints
-├── ecg_data/                               # Classification training data
-├── ptb-xl-.../                             # 🆕 PTB-XL dataset for digitization
-├── start_full_system.bat                   # 🆕 Launch backend + frontend
-├── start_digitization_training.bat         # 🆕 Quick training start
-├── TESTING_GUIDE.md                        # 🆕 Comprehensive testing guide
-├── ECG_DIGITIZATION_GUIDE.md               # 🆕 Complete digitization docs
-├── PROJECT_SUMMARY.md                      # 🆕 Quick reference
-└── README.md                               # This file
+## 🚀 Core Highlights
 
-🆕 = New for dual-mode system (v3.0.0)
-✅ = Updated for dual-mode supportkpoints
-├── ecg_data/                        # Training data
-├── start_backend.bat/.ps1           # ✅ Quick start scripts
-├── start_frontend.bat               # ✅ Frontend launcher
-├── INTEGRATION_GUIDE.md             # ✅ Detailed integration docs
-└── README.md                        # This file
+* 🧠 **AI-Based Prediction Engine** – Uses trained ML models to detect heart disease risk
+* 📊 **Interactive Dashboard** – Visualizes patient metrics and results
+* ⚡ **Real-Time Inference** – Instant predictions based on user input
+* 🔐 **Secure Authentication System** – Ensures data privacy and user access control
+* 📈 **Risk Score & Insights** – Provides actionable interpretation of predictions
+* 🧪 **Model Training Pipeline** – Supports retraining and experimentation
+* 🌐 **Scalable Architecture** – Built for real-world deployment
 
-✅ = Recently updated for HybridECGNet integration
+---
+
+## 🧠 System Architecture
+
+```
+User Input → Frontend UI → Backend API → ML Model → Prediction → Response → Visualization
 ```
 
-## 🚀 Quick Start
+### Flow Explanation
 
-### Prerequisites
-- Python 3.8+
-- PyTorch (CPU or GPU)
-- Flask
-- Modern web browser
-- **For Digitization**: PTB-XL dataset, wfdb package
+1. User inputs medical data
+2. Backend validates and preprocesses data
+3. ML model performs prediction
+4. Results are returned and visualized
 
-### Installation
+---
 
-1. **Clone the repository:**
-```bash
+## 🏗️ Tech Stack
+
+### 🌐 Frontend
+
+* React.js / HTML / CSS
+* Bootstrap / Tailwind CSS
+* Chart.js / Recharts (for visualization)
+
+### ⚙️ Backend
+
+* Node.js + Express.js OR Python Flask/FastAPI
+* RESTful API architecture
+
+### 🤖 Machine Learning
+
+* Python
+* Scikit-learn
+* Pandas, NumPy
+* Matplotlib / Seaborn (EDA)
+
+### 🗄️ Database
+
+* MongoDB / MySQL / Firebase
+
+### 🔐 Authentication
+
+* JWT / Sessions
+
+---
+
+## 📁 Detailed Project Structure
+
+```
+CardioVision-AI/
+│── frontend/              # UI components & pages
+│   ├── components/
+│   ├── pages/
+│   └── styles/
+│
+│── backend/               # API & server logic
+│   ├── routes/
+│   ├── controllers/
+│   ├── middleware/
+│   └── config/
+│
+│── models/                # ML model files (.pkl)
+│── datasets/              # Training datasets
+│── notebooks/             # EDA & training notebooks
+│── utils/                 # Helper functions
+│── app.py / server.js     # Entry point
+│── requirements.txt / package.json
+```
+
+---
+
+## ⚙️ Working Mechanism (Step-by-Step)
+
+### 1️⃣ Data Input
+
+User provides:
+
+* Age
+* Gender
+* Blood Pressure
+* Cholesterol
+* Heart Rate
+* Other clinical features
+
+### 2️⃣ Data Preprocessing
+
+* Normalization
+* Missing value handling
+* Feature encoding
+
+### 3️⃣ Model Prediction
+
+* Model processes input
+* Generates probability score
+
+### 4️⃣ Output Generation
+
+* Risk category: Low / Medium / High
+* Confidence score
+* Recommendations (optional)
+
+---
+
+## 📊 Machine Learning Details
+
+### 🔍 Algorithms Used
+
+* Logistic Regression
+* Random Forest Classifier
+* Support Vector Machine (optional)
+* Neural Networks (future scope)
+
+### 📌 Model Features
+
+* Trained on structured medical datasets
+* Feature importance analysis
+* Cross-validation for reliability
+
+### 📈 Evaluation Metrics
+
+* Accuracy
+* Precision
+* Recall
+* F1 Score
+* Confusion Matrix
+
+---
+
+## RESTful API Design
+
+| Method | Endpoint           | Description                |
+| ------ | ------------------ | -------------------------- |
+| POST   | /api/predict       | Predict heart disease risk |
+| GET    | /api/history       | Get user predictions       |
+| POST   | /api/auth/register | Register user              |
+| POST   | /api/auth/login    | Login user                 |
+
+---
+
+## 🛠️ Installation & Setup
+
+### 1️⃣ Clone Repository
+
+```
 git clone https://github.com/SQUADRON-LEADER/CardioVision-AI.git
 cd CardioVision-AI
 ```
 
-2. **Setup virtual environment:**
-```bash
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-source .venv/bin/activate       # Linux/Mac
+### 2️⃣ Install Dependencies
+
+#### Backend (Node)
+
+```
+npm install
 ```
 
-3. **Install dependencies:**
-```bash
-pip install -r backend/requirements.txt
-pip install wfdb  # For digitization mode
+#### OR Python Backend
+
+```
+pip install -r requirements.txt
 ```
 
-### Running the Full System (Both Modes)
+### 3️⃣ Run Application
 
-#### Option 1: One-Click Launcher (Windows)
-```bash
-start_full_system.bat
 ```
-This will:
-- Start Flask backend at `http://localhost:5000`
-- Open enhanced frontend with task selector
-- Display testing instructions
+npm start
+```
 
-#### Option 2: Manual Start
+or
 
-**Backend Server:**
-```bash
-cd backend
+```
 python app.py
 ```
-→ Server runs at `http://localhost:5000`
-
-**Frontend:**
-- **Enhanced UI** (Dual Mode): Open `frontend/index_enhanced.html`
-- **Legacy UI** (Classification Only): Open `frontend/index.html`
-
-### Using the Application
-
-#### Classification Mode
-1. **Select "Classification"** in the task selector
-2. **Upload an ECG image** from `ecg_data/` folders
-3. **Click "Process ECG"**
-4. **View results**:
-   - Diagnosis: Normal / Abnormal / MI
-   - Confidence percentage
-   - Probability distribution
-5. **Download** as JSON
-
-#### Digitization Mode
-1. **Select "Digitization"** in the task selector
-2. **Upload any ECG image** (printout or PTB-XL)
-3. **Click "Process ECG"**
-4. **View results**:
-   - Interactive 12-lead signal plot
-   - Quality metrics (SNR, sampling rate)
-   - Signal statistics
-5. **Export** as JSON or CSV
-
-## 📊 Training Models
-
-### Classification Model (HybridECGNet)
-Already trained! Model file: `backend/ecg_model_final.pth`
-
-### Digitization Model (Train Required)
-
-#### Option 1: Jupyter Notebook (Recommended)
-```bash
-jupyter notebook ECG_Digitization_Complete_Training.ipynb
-```
-Run all cells to train and save model.
-
-#### Option 2: Python Script
-```bash
-python train_digitization.py
-```
-
-#### Quick Training Start
-```bash
-start_digitization_training.bat  # Windows
-```
-
-**After Training:**
-```bash
-# Copy trained model to backend
-copy checkpoints\best_model_digitization.pth backend\
-```
-
-See [TESTING_GUIDE.md](TESTING_GUIDE.md) for detailed training instructions.
-
-## 🔌 API Reference
-
-### POST `/api/v1/digitize`
-
-Process ECG image for classification or digitization.
-
-#### Classification Request
-```bash
-curl -X POST http://localhost:5000/api/v1/digitize \
-  -F "file=@ecg_image.png" \
-  -F "task=classification" \
-  -F 'options={"remove_grid":true,"denoise":true}'
-```
-
-**Response (Classification):**
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "uuid",
-    "task": "classification",
-    "prediction": {
-      "class": "Normal",
-      "class_index": 0,
-      "confidence": 85.5,
-      "probability_distribution": {
-        "Normal": 0.855,
-        "Abnormal Heartbeat": 0.120,
-        "Myocardial Infarction": 0.025
-      }
-    },
-    "metadata": {
-      "task": "classification",
-      "model_type": "HybridECGNet",
-      "model_version": "3.0.0",
-      "processing_time_seconds": 0.234
-    },
-    "quality_metrics": {
-      "confidence_score": 85.5,
-      "prediction_certainty": "high"
-    }
-  }
-}
-```
-
-#### Digitization Request
-```bash
-curl -X POST http://localhost:5000/api/v1/digitize \
-  -F "file=@ecg_image.png" \
-  -F "task=digitization" \
-  -F 'options={"remove_grid":true,"denoise":true,"output_format":"json"}'
-```
-
-**Response (Digitization):**
-```json
-{
-  "success": true,
-  "data": {
-    "request_id": "uuid",
-    "task": "digitization",
-    "signals": {
-      "I": [0.12, 0.15, 0.18, ...],  // 1000 samples
-      "II": [0.23, 0.21, 0.24, ...],
-      "III": [-0.11, -0.06, ...],
-      "aVR": [-0.17, -0.18, ...],
-      "aVL": [0.12, 0.10, ...],
-      "aVF": [0.06, 0.08, ...],
-      "V1": [0.04, 0.03, ...],
-      "V2": [0.15, 0.18, ...],
-      "V3": [0.32, 0.35, ...],
-      "V4": [0.45, 0.48, ...],
-      "V5": [0.38, 0.40, ...],
-      "V6": [0.28, 0.30, ...]
-    },
-    "quality_metrics": {
-      "average_snr_db": 18.5,
-      "overall_quality": "Good",
-      "per_lead_quality": {...}
-    },
-    "metadata": {
-      "task": "digitization",
-      "model_type": "AdvancedECGDigitizationModel",
-      "model_version": "3.0.0",
-      "processing_time_seconds": 1.234,
-      "num_leads": 12,
-      "signal_length": 1000,
-      "sampling_rate_hz": 100
-    }
-  }
-}
-```
-
-### GET `/health`
-Health check endpoint.
-
-### GET `/api/v1/info`
-Get service information, available tasks, and model details.
-
-**Response:**
-```json
-{
-  "service": "CardioVision AI - ECG Analysis",
-  "version": "3.0.0",
-  "available_tasks": ["classification", "digitization"],
-  "models": {
-    "classification": {
-      "type": "HybridECGNet",
-      "classes": ["Normal", "Abnormal Heartbeat", "Myocardial Infarction"]
-    },
-    "digitization": {
-      "type": "AdvancedECGDigitizationModel",
-      "leads": 12,
-      "output_length": 1000
-    }
-  }
-}
-```
-
-## 🎯 Classification Classes
-
-| Class | Description | Color Code |
-|-------|-------------|------------|
-| **Normal** | Regular heart rhythm, no abnormalities | 🟢 Green |
-| **Abnormal Heartbeat** | Irregular heart rhythm patterns | 🟠 Orange |
-| **Myocardial Infarction** | Heart attack indicators | 🔴 Red |
-
-## 📈 Model Performance
-
-### Classification Model
-- **Architecture**: HybridECGNet with CBAM Attention
-- **Parameters**: ~35M trainable parameters
-- **Input Size**: 224×224×3 RGB images
-- **Training Dataset**: Custom ECG image dataset
-- **Test Accuracy**: ~70-85% (varies by class)
-
-### Digitization Model
-- **Architecture**: ResNet50 + Multi-head Attention + Per-lead Decoders
-- **Parameters**: ~55M trainable parameters
-- **Input Size**: 224×224×3 RGB images
-- **Training Dataset**: PTB-XL (21,837 ECG recordings)
-- **Output**: 12 leads × 1000 samples (100 Hz sampling)
-- **Quality**: Average SNR >15 dB on validation set
-
-## 🛠️ Technology Stack
-
-- **Backend**: Flask, PyTorch, OpenCV, Pillow, wfdb
-- **Frontend**: HTML5, JavaScript, TailwindCSS, Plotly.js
-- **Models**: 
-  - HybridECGNet (Classification)
-  - AdvancedECGDigitizationModel (Signal Extraction)
-- **Deployment**: CPU/GPU compatible
-- **Training**: Jupyter Notebooks with full pipeline
-
-## 📚 Documentation
-
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Complete testing instructions for both modes
-- **[ECG_DIGITIZATION_GUIDE.md](ECG_DIGITIZATION_GUIDE.md)** - Digitization system documentation
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Quick reference guide
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **Jupyter Notebooks** - Training pipelines with explanations
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**SQUADRON-LEADER**  
-GitHub: [@SQUADRON-LEADER](https://github.com/SQUADRON-LEADER)
-
-## 🙏 Acknowledgments
-
-- PTB-XL dataset (PhysioNet) for ECG data
-- PyTorch team for the deep learning framework
-- Medical professionals for domain expertise
-- ECG-Digitiser project for frontend inspiration
-
-## 📞 Support
-
-For questions or issues:
-- Open an issue on GitHub
-- Check [TESTING_GUIDE.md](TESTING_GUIDE.md) for setup instructions
-- Review [ECG_DIGITIZATION_GUIDE.md](ECG_DIGITIZATION_GUIDE.md) for detailed docs
-- Explore the training notebooks for model details
 
 ---
 
-**Status**: ✅ Production Ready (Classification) | 🔄 Training Required (Digitization)  
-**Last Updated**: January 2025
-**Version**: 3.0.0 (Dual-Mode System)
+## 📸 Screenshots (Add Here)
+
+* 🏠 Home Dashboard
+* 📊 Prediction Interface
+* 📈 Result Visualization
+* 🔐 Authentication Pages
+
+---
+
+## 🌟 Key Use Cases
+
+* 🏥 Hospitals – Assist doctors in diagnosis
+* 👨‍⚕️ Clinics – Quick patient screening
+* 🧪 Researchers – Analyze cardiovascular datasets
+* 👤 Individuals – Self risk awareness tool
+
+---
+
+## 🔮 Future Enhancements
+
+* 🧠 Deep Learning Models (CNN/RNN)
+* 📱 Mobile App Integration
+* 🌐 Cloud Deployment (AWS / Azure / GCP)
+* 🔍 Explainable AI (SHAP, LIME)
+* 🏥 Integration with hospital systems
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions!
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to your branch
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2026 SQUADRON-LEADER
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 💡 Author
+
+Developed with ❤️ by **SQUADRON-LEADER**
+
+---
+
+## ⭐ Support
+
+If you found this project useful:
+
+⭐ Star the repository
+ Fork it
+ Share with others
+
+---
+
+> 🚀 *CardioVision-AI is not just a project — it's a step toward smarter, AI-driven healthcare.*

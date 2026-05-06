@@ -5,6 +5,14 @@ Configuration for ECG Digitization Service
 import os
 from pathlib import Path
 
+
+def _first_existing_path(candidates):
+    """Return first existing path from candidates, otherwise first candidate."""
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return str(candidate)
+    return str(candidates[0]) if candidates else ''
+
 class Config:
     """Flask application configuration"""
     
@@ -22,13 +30,27 @@ class Config:
     
     # Model settings
     BASE_DIR = Path(__file__).parent.parent
+
+    _CLASSIFICATION_CANDIDATES = [
+        BASE_DIR / 'backend' / 'ecg_model_final.pth',
+        BASE_DIR / 'backend' / 'best_model_advanced.pth',
+    ]
+    _DIGITIZATION_CANDIDATES = [
+        BASE_DIR / 'outputs' / 'ecg_digitization_effnet_final.pth',
+        BASE_DIR / 'outputs' / 'ecg_digitization_model_final.pth',
+        BASE_DIR / 'backend' / 'best_model_ptbxl.pth',
+    ]
     
     # Support both classification and digitization models
     MODEL_PATHS = {
-        'classification': os.environ.get('CLASSIFICATION_MODEL', 
-                                        str(BASE_DIR / 'flask_backend' / 'ecg_model_final.pth')),
-        'digitization': os.environ.get('DIGITIZATION_MODEL',
-                                      str(BASE_DIR / 'flask_backend' / 'best_model_digitization.pth'))
+        'classification': os.environ.get(
+            'CLASSIFICATION_MODEL',
+            _first_existing_path(_CLASSIFICATION_CANDIDATES),
+        ),
+        'digitization': os.environ.get(
+            'DIGITIZATION_MODEL',
+            _first_existing_path(_DIGITIZATION_CANDIDATES),
+        ),
     }
     
     # Legacy single model path (for backward compatibility)
@@ -36,7 +58,8 @@ class Config:
     MODEL_VERSION = '3.0.0'  # Updated to support both tasks
     
     # Default task (what to use if not specified)
-    DEFAULT_TASK = os.environ.get('DEFAULT_TASK', 'digitization')  # 'classification' or 'digitization'
+    # Supported: 'classification', 'digitization', 'pipeline', 'auto'
+    DEFAULT_TASK = os.environ.get('DEFAULT_TASK', 'pipeline')
     
     # Processing settings
     MAX_BATCH_SIZE = int(os.environ.get('MAX_BATCH_SIZE', 10))

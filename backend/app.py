@@ -3,7 +3,7 @@ Production-Ready ECG Image Digitization Flask Backend
 Provides RESTful APIs for ECG image to signal conversion
 """
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import os
@@ -20,6 +20,18 @@ from inference import ECGInferenceEngine
 from preprocessing import ECGImagePreprocessor
 from config import Config
 from flask.json.provider import DefaultJSONProvider
+
+
+# Setup logging early so import-time checks can log safely
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('ecg_service.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Try to import unified components (for dual task support)
 try:
@@ -53,52 +65,47 @@ app.config.from_object(Config)
 app.json = NumpyJSONProvider(app)
 CORS(app)
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('ecg_service.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
 # Initialize components
 preprocessor = ECGImagePreprocessor(target_size=app.config['IMAGE_SIZE'])
+USING_UNIFIED = False
 
 # Use unified system if available, otherwise legacy
-if UNIFIED_AVAILABLE and hasattr(app.config, 'MODEL_PATHS'):
+if UNIFIED_AVAILABLE and ('MODEL_PATHS' in app.config):
     logger.info("Using unified model system (supports both classification & digitization)")
     model_manager = UnifiedModelManager(app.config['MODEL_PATHS'])
     inference_engine = UnifiedECGInferenceEngine(model_manager, preprocessor)
+    USING_UNIFIED = True
 else:
     logger.info("Using legacy model system (classification only)")
-    model_manager = ModelMAnalysis Service (Classification & Digitization)...")
-if UNIFIED_AVAILABLE:
-    logger.info(f"Model paths: {app.config['MODEL_PATHS']}")
+    model_manager = ModelManager(app.config['MODEL_PATH'])
+    inference_engine = ECGInferenceEngine(model_manager, preprocessor)
+
+logger.info("Starting ECG Analysis Service (Classification + Digitization)...")
+if USING_UNIFIED:
+    logger.info(f"Configured model paths: {app.config['MODEL_PATHS']}")
 else:
-    logger.info(f"Model path: {app.config['MODEL_PATH']}")
+    logger.info(f"Configured model path: {app.config['MODEL_PATH']}")
 logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+logger.info(f"Output folder: {app.config['OUTPUT_FOLDER']}")
+
+# Ensure IO folders exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / 'frontend'
+
+# Load model(s) once at startup
 try:
-    if UNIFIED_AVAILABLE:
-        model_manager.load_model('auto')  # Load all available models
+    if USING_UNIFIED:
+        model_manager.load_model('auto')
         available = model_manager.get_available_models()
-        logger.info(f"Models loaded: {', '.join(available)}")
+        logger.info(f"Models loaded successfully: {', '.join(available) if available else 'none'}")
     else:
         model_manager.load_model()
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-
-# Load model at startup (before handling any requests)
-logger.info("Starting ECG Digitization Service...")
-logger.info(f"Model path: {app.config['MODEL_PATH']}")
-logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
-try:
-    model_manager.load_model()
-    logger.info("Model loaded successfully")
+        logger.info("Legacy model loaded successfully")
 except Exception as e:
-    logger.error(f"Failed to load model: {str(e)}")
-    logger.warning("Service starting without loaded model - requests will fail")
+    logger.error(f"Failed to load model(s): {str(e)}")
+    logger.warning("Service started, but inference requests may fail until models are available")
 
 
 def allowed_file(filename):
@@ -118,6 +125,33 @@ def create_response(success, data=None, error=None, status_code=200):
     if error:
         response['error'] = error
     return jsonify(response), status_code
+
+
+@app.route('/', methods=['GET'])
+def frontend_index():
+    """Serve frontend from backend for single-URL local usage."""
+    enhanced = FRONTEND_DIR / 'index_enhanced.html'
+    basic = FRONTEND_DIR / 'index.html'
+
+    if enhanced.exists():
+        return send_from_directory(FRONTEND_DIR, 'index_enhanced.html')
+    if basic.exists():
+        return send_from_directory(FRONTEND_DIR, 'index.html')
+
+    return create_response(
+        success=False,
+        error='Frontend files not found',
+        status_code=404
+    )
+
+
+@app.route('/<path:filename>', methods=['GET'])
+def frontend_static(filename):
+    """Serve frontend static assets (js/css/html) via backend."""
+    file_path = FRONTEND_DIR / filename
+    if file_path.exists() and file_path.is_file():
+        return send_from_directory(FRONTEND_DIR, filename)
+    return create_response(success=False, error='Endpoint not found', status_code=404)
 
 
 @app.route('/health', methods=['GET'])
@@ -147,69 +181,82 @@ def health_check():
 @app.route('/api/v1/info', methods=['GET'])
 def get_service_info():
     """Get service information and capabilities"""
-    
-    # Detect available models
-    available_models = []
-    if UNIFIED_AVAILABLE:
-        available_models = model_manager.get_available_models()
-    else:
-        available_models = ['classification']  # Legacy system
-    
-    info = {
-        'service_name': 'CardioVision AI - ECG Analysis Service',
-        'version': app.config['MODEL_VERSION'],
-        'description': 'AI-powered ECG image analysis supporting classification and digitization',
-        'available_tasks': available_models,
-        'default_task': app.config.get('DEFAULT_TASK', 'digitization'),
-        'capabilities': {
-            'classification': {
-                'enabled': 'classification' in available_models,
-                'classes': ['Normal', 'Abnormal Heartbeat', 'Myocardial Infarction'],
-                'description': 'Diagnose cardiac conditions from ECG images'
+    try:
+        # Detect available models
+        available_models = []
+        if USING_UNIFIED:
+            available_models = model_manager.get_available_models()
+        else:
+            available_models = ['classification']  # Legacy system
+
+        info = {
+            'service_name': 'CardioVision AI - ECG Analysis Service',
+            'version': app.config['MODEL_VERSION'],
+            'description': 'AI-powered ECG image analysis supporting classification and digitization',
+            'available_tasks': available_models,
+            'default_task': app.config.get('DEFAULT_TASK', 'digitization'),
+            'recommended_task': 'pipeline',
+            'using_unified': USING_UNIFIED,
+            'capabilities': {
+                'pipeline': {
+                    'enabled': ('classification' in available_models and 'digitization' in available_models),
+                    'description': 'Runs digitization first, then disease classification in one request'
+                },
+                'classification': {
+                    'enabled': 'classification' in available_models,
+                    'classes': ['Normal', 'Abnormal Heartbeat', 'Myocardial Infarction'],
+                    'description': 'Diagnose cardiac conditions from ECG images'
+                },
+                'digitization': {
+                    'enabled': 'digitization' in available_models,
+                    'output_leads': 12,
+                    'signal_length': 1000,
+                    'sampling_rate_hz': 500,
+                    'signal_duration_sec': 2.0,
+                    'description': 'Convert ECG images to digital time-series signals'
+                },
+                'supported_formats': list(app.config['ALLOWED_EXTENSIONS']),
+                'max_file_size_mb': app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024),
             },
-            'digitization': {
-                'enabled': 'digitization' in available_models,
-                'output_leads': 12,
-                'signal_length': 1000,
-                'sampling_rate_hz': 500,
-                'signal_duration_sec': 2.0,
-                'description': 'Convert ECG images to digital time-series signals'
+            'model_info': {
+                'architectures': {
+                    'classification': 'HybridECGNet (ResNet34 + CBAM Attention)',
+                    'digitization': 'AdvancedECGDigitizationModel (ResNet50 + Multi-Head Attention)'
+                },
+                'version': model_manager.get_model_version() if hasattr(model_manager, 'get_model_version') else 'N/A',
+                'parameters': model_manager.get_model_parameters() if hasattr(model_manager, 'get_model_parameters') else 'N/A',
             },
-            'supported_formats': list(app.config['ALLOWED_EXTENSIONS']),
-            'max_file_size_mb': app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024),
-        },
-        'model_info': {
-            'architectures': {
-                'classification': 'HybridECGNet (ResNet34 + CBAM Attention)',
-                'digitization': 'AdvancedECGDigitizationModel (ResNet50 + Multi-Head Attention)'
-            },
-            'version': model_manager.get_model_version() if hasattr(model_manager, 'get_model_version') else 'N/A',
-            'parameters': model_manager.get_model_parameters() if hasattr(model_manager, 'get_model_parameters') else 'N/A',
-        },
-        'preprocessing': {
-            'techniques': [
-                'CLAHE contrast enhancement',
-                'Noise reduction',
-                'Skew correction',
-                'Rotation correction',
-                'Grid line removal (optional)',
-                'Illumination normalization'
-            ],
-            'image_size': f"{app.config['IMAGE_SIZE'][0]}×{app.config['IMAGE_SIZE'][1]}",
-            'normalization': 'ImageNet mean/std'
+            'preprocessing': {
+                'techniques': [
+                    'CLAHE contrast enhancement',
+                    'Noise reduction',
+                    'Skew correction',
+                    'Rotation correction',
+                    'Grid line removal (optional)',
+                    'Illumination normalization'
+                ],
+                'image_size': f"{app.config['IMAGE_SIZE'][0]}x{app.config['IMAGE_SIZE'][1]}",
+                'normalization': 'ImageNet mean/std'
+            }
         }
-    }
-    return create_response(success=True, data=info)
+        return create_response(success=True, data=info)
+    except Exception as e:
+        logger.error(f"Service info error: {str(e)}")
+        return create_response(
+            success=False,
+            error='Failed to build service info',
+            status_code=500
+        )
 
 
 @app.route('/api/v1/digitize', methods=['POST'])
 def digitize_ecg():
     """
-    Main endpoint for ECG analysis (classification OR digitization)
+    Main endpoint for ECG analysis.
     
     Request:
         - file: ECG image file (jpg, jpeg, png)
-        - task: 'classification' or 'digitization' (default: from config)
+        - task: 'classification', 'digitization', 'pipeline', or 'auto' (default: from config)
         - options: JSON object with processing options (optional)
             - remove_grid: bool (default: True)
             - denoise: bool (default: True)
@@ -260,6 +307,14 @@ def digitize_ecg():
         
         # Get task type (classification or digitization)
         task = request.form.get('task', app.config.get('DEFAULT_TASK', 'digitization'))
+
+        # Legacy guardrail: only classification supported.
+        if (not USING_UNIFIED) and task in ('digitization', 'pipeline', 'auto'):
+            return create_response(
+                success=False,
+                error='Requested task requires unified backend mode. Restart backend to load unified models.',
+                status_code=400
+            )
         
         # Generate request ID
         request_id = str(uuid.uuid4())
@@ -274,7 +329,7 @@ def digitize_ecg():
         logger.info(f"Processing request {request_id} for file: {filename}, task: {task}")
         
         # Run inference
-        if UNIFIED_AVAILABLE:
+        if USING_UNIFIED:
             result = inference_engine.process_ecg_image(
                 image_path=filepath,
                 request_id=request_id,

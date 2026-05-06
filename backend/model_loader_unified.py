@@ -16,6 +16,93 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 logger = logging.getLogger(__name__)
 
 
+class EfficientNetECGDigitization(nn.Module):
+    """Torchvision-free EfficientNet-style digitization model used by saved checkpoints."""
+
+    def __init__(self, signal_length=1000, num_leads=12, dropout=0.12):
+        super().__init__()
+        self.signal_length = signal_length
+        self.num_leads = num_leads
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(256),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
+            nn.BatchNorm2d(512),
+            nn.SiLU(inplace=True),
+        )
+
+        self.spatial_pos = nn.Parameter(torch.randn(1, 49, 512) * 0.02)
+        self.lead_queries = nn.Parameter(torch.randn(1, num_leads, 512) * 0.02)
+
+        self.cross_attn = nn.MultiheadAttention(512, num_heads=8, dropout=dropout, batch_first=True)
+        self.cross_norm = nn.LayerNorm(512)
+        self.self_attn = nn.MultiheadAttention(512, num_heads=8, dropout=dropout, batch_first=True)
+        self.self_norm = nn.LayerNorm(512)
+
+        self.ffn = nn.Sequential(
+            nn.Linear(512, 1024),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(1024, 512),
+            nn.Dropout(dropout),
+        )
+        self.ffn_norm = nn.LayerNorm(512)
+
+        self.seq_proj = nn.Sequential(
+            nn.Linear(512, 64 * 16),
+            nn.GELU(),
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose1d(64, 48, kernel_size=4, stride=4, padding=0),
+            nn.BatchNorm1d(48),
+            nn.GELU(),
+            nn.Dropout(dropout * 0.5),
+            nn.ConvTranspose1d(48, 32, kernel_size=4, stride=4, padding=0),
+            nn.BatchNorm1d(32),
+            nn.GELU(),
+            nn.Dropout(dropout * 0.5),
+            nn.ConvTranspose1d(32, 16, kernel_size=4, stride=4, padding=0),
+            nn.BatchNorm1d(16),
+            nn.GELU(),
+            nn.Conv1d(16, 1, kernel_size=7, padding=3),
+        )
+        self.refinement = nn.Sequential(
+            nn.Conv1d(num_leads, num_leads * 2, kernel_size=15, padding=7),
+            nn.BatchNorm1d(num_leads * 2),
+            nn.GELU(),
+            nn.Conv1d(num_leads * 2, num_leads, kernel_size=7, padding=3),
+            nn.Tanh(),
+        )
+
+    def forward(self, x):
+        bsz = x.size(0)
+        feat = self.encoder(x)
+        spatial = feat.flatten(2).permute(0, 2, 1) + self.spatial_pos
+        queries = self.lead_queries.expand(bsz, -1, -1)
+
+        attn_out, _ = self.cross_attn(queries, spatial, spatial)
+        leads = self.cross_norm(queries + attn_out)
+        self_out, _ = self.self_attn(leads, leads, leads)
+        leads = self.self_norm(leads + self_out)
+        leads = self.ffn_norm(leads + self.ffn(leads))
+
+        seq = self.seq_proj(leads).view(bsz * self.num_leads, 64, 16)
+        decoded = self.decoder(seq)[:, 0, :self.signal_length]
+        signals = decoded.view(bsz, self.num_leads, -1)
+        return self.refinement(signals)
+
+
 class ModelManager:
     """
     Manages loading and inference for ECG models
@@ -48,9 +135,19 @@ class ModelManager:
             model_type: 'classification', 'digitization', or 'auto'
         """
         if model_type == 'auto':
-            # Load all available models
+            # Load all available models without aborting on first failure.
+            errors = []
             for mtype in self.model_paths.keys():
-                self._load_specific_model(mtype)
+                try:
+                    self._load_specific_model(mtype)
+                except Exception as e:
+                    errors.append(f"{mtype}: {e}")
+
+            if not self.models:
+                raise RuntimeError("No models could be loaded: " + '; '.join(errors))
+
+            if errors:
+                logger.warning("Some models failed to load: " + '; '.join(errors))
         else:
             self._load_specific_model(model_type)
     
@@ -68,7 +165,8 @@ class ModelManager:
         
         try:
             # Load checkpoint
-            checkpoint = torch.load(model_path, map_location=self.device)
+            # Local project checkpoints are trusted and may include numpy scalars.
+            checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
             
             # Determine model architecture and load
             if model_type == 'classification':
@@ -88,7 +186,7 @@ class ModelManager:
                 'device': str(self.device)
             }
             
-            logger.info(f"✓ {model_type.capitalize()} model loaded successfully")
+            logger.info(f"{model_type.capitalize()} model loaded successfully")
             logger.info(f"  Parameters: {self.model_info[model_type]['parameters']:,}")
             
         except Exception as e:
@@ -97,9 +195,10 @@ class ModelManager:
     
     def _load_classification_model(self, checkpoint):
         """Load classification model (HybridECGNet)"""
-        from flask_backend.model_loader import HybridECGNet
+        from model_loader import HybridECGNet
         
-        model = HybridECGNet(num_classes=3, dropout=0.3)
+        num_classes = int(checkpoint.get('num_classes', 3)) if isinstance(checkpoint, dict) else 3
+        model = HybridECGNet(num_classes=num_classes, dropout_rate=0.3)
         
         if 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])
@@ -113,26 +212,17 @@ class ModelManager:
     
     def _load_digitization_model(self, checkpoint):
         """Load digitization model"""
-        # Import from parent directory
-        try:
-            from ECG_Digitization_Model import create_digitization_model
-        except ImportError:
-            # Try alternative import
-            import sys
-            sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-            from ECG_Digitization_Model import create_digitization_model
-        
-        # Detect model type from checkpoint
-        model_type = 'advanced'  # default
-        if 'model_type' in checkpoint:
-            model_type = checkpoint['model_type']
-        
-        model = create_digitization_model(
-            model_type=model_type,
-            signal_length=1000,
-            num_leads=12,
-            dropout=0.3
-        )
+        arch_text = str(checkpoint.get('architecture', ''))
+        uses_effnet = 'EfficientNet' in arch_text or 'effnet' in arch_text.lower()
+
+        model = None
+        if uses_effnet:
+            logger.info("Detected EfficientNet-style digitization checkpoint")
+            model = EfficientNetECGDigitization(signal_length=1000, num_leads=12, dropout=0.0)
+        else:
+            # Fallback to the legacy backend digitization architecture.
+            from model_loader import ECGDigitizationModel
+            model = ECGDigitizationModel(num_leads=12, signal_length=1000)
         
         if 'model_state_dict' in checkpoint:
             model.load_state_dict(checkpoint['model_state_dict'])

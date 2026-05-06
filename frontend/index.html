@@ -129,7 +129,7 @@
                     </div>
                     <h3 class="text-xl font-semibold text-white mb-2">ECG Classification</h3>
                     <p class="text-sm text-neutral-400 mb-6">
-                        Diagnose Normal, Abnormal Heartbeat, and Myocardial Infarction.
+                        Diagnose Normal, Abnormal Heartbeat, and Myocardial Infarction with confidence scores.
                     </p>
                 </div>
             </div>
@@ -284,7 +284,16 @@
                                     <p id="processingTime" class="text-2xl font-semibold text-white">--</p>
                                 </div>
                             </div>
-
+                            <div class="relative p-5 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden group/card">
+                                <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-green-900/10 blur-[40px] rounded-full group-hover/card:bg-green-900/20 transition-all"></div>
+                                <div class="relative">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <iconify-icon icon="solar:star-linear" class="text-neutral-500 text-lg"></iconify-icon>
+                                        <p class="text-xs text-neutral-500 font-medium uppercase tracking-wider">Quality</p>
+                                    </div>
+                                    <p id="qualityScore" class="text-2xl font-semibold text-white">--</p>
+                                </div>
+                            </div>
                             <div class="relative p-5 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden group/card">
                                 <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-red-900/10 blur-[40px] rounded-full group-hover/card:bg-red-900/20 transition-all"></div>
                                 <div class="relative">
@@ -303,6 +312,7 @@
                                 <div class="text-center mb-6">
                                     <p class="text-sm text-neutral-500 uppercase tracking-wider mb-2">Diagnosis</p>
                                     <p id="predictionClass" class="text-4xl font-bold text-white mb-2">--</p>
+                                    <p class="text-neutral-400">Confidence: <span id="predictionConfidence" class="font-semibold text-white">--</span></p>
                                 </div>
                                 <div class="mt-6">
                                     <p class="text-sm text-neutral-400 mb-4 font-semibold">Probability Distribution</p>
@@ -372,7 +382,7 @@
                 <span class="text-lg font-semibold text-white">CardioVision AI</span>
             </div>
             <p class="text-neutral-500 text-sm">
-                © 2026 CardioVision AI. Advanced ECG Analysis & Digitization Platform.
+                © 2024 CardioVision AI. Advanced ECG Analysis & Digitization Platform.
             </p>
         </div>
     </footer>

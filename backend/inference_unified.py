@@ -53,7 +53,9 @@ class UnifiedECGInferenceEngine:
             # Determine task
             if task == 'auto':
                 available_models = self.model_manager.get_available_models()
-                if 'digitization' in available_models:
+                if 'digitization' in available_models and 'classification' in available_models:
+                    task = 'pipeline'
+                elif 'digitization' in available_models:
                     task = 'digitization'
                 elif 'classification' in available_models:
                     task = 'classification'
@@ -68,17 +70,41 @@ class UnifiedECGInferenceEngine:
             
             # 2. Run inference
             logger.info(f"[{request_id}] Running inference...")
-            predictions, model_type = self.model_manager.predict(input_tensor, model_type=task)
-            
-            # 3. Post-process based on task
-            logger.info(f"[{request_id}] Post-processing results...")
-            
-            if task == 'classification':
-                result_data, quality_metrics = self._post_process_classification(predictions)
-            elif task == 'digitization':
-                result_data, quality_metrics = self._post_process_digitization(predictions)
+
+            model_type = task
+            if task == 'pipeline':
+                available_models = self.model_manager.get_available_models()
+                if 'digitization' not in available_models or 'classification' not in available_models:
+                    raise ValueError("Pipeline mode requires both digitization and classification models")
+
+                # Required order: digitization first, disease prediction second.
+                digi_predictions, _ = self.model_manager.predict(input_tensor, model_type='digitization')
+                digi_data, digi_quality = self._post_process_digitization(digi_predictions)
+
+                cls_predictions, _ = self.model_manager.predict(input_tensor, model_type='classification')
+                cls_data, cls_quality = self._post_process_classification(cls_predictions)
+
+                result_data = {
+                    **digi_data,
+                    **cls_data,
+                }
+                quality_metrics = {
+                    **digi_quality,
+                    'classification': cls_quality,
+                    'pipeline_order': ['digitization', 'classification']
+                }
+                model_type = 'pipeline'
             else:
-                raise ValueError(f"Unknown task: {task}")
+                predictions, model_type = self.model_manager.predict(input_tensor, model_type=task)
+
+                # 3. Post-process based on task
+                logger.info(f"[{request_id}] Post-processing results...")
+                if task == 'classification':
+                    result_data, quality_metrics = self._post_process_classification(predictions)
+                elif task == 'digitization':
+                    result_data, quality_metrics = self._post_process_digitization(predictions)
+                else:
+                    raise ValueError(f"Unknown task: {task}")
             
             # 4. Calculate processing time
             processing_time = time.time() - start_time
@@ -93,6 +119,7 @@ class UnifiedECGInferenceEngine:
                     'processing_time_seconds': round(processing_time, 3),
                     'timestamp': datetime.utcnow().isoformat(),
                     'model_type': model_type,
+                    'task': task,
                     'preprocessing': preprocess_metadata
                 },
                 'quality_metrics': quality_metrics,
@@ -103,6 +130,13 @@ class UnifiedECGInferenceEngine:
             if task == 'classification':
                 result['metadata']['num_classes'] = len(self.CLASS_NAMES)
             elif task == 'digitization':
+                result['metadata']['sampling_rate_hz'] = self.SAMPLING_RATE
+                result['metadata']['signal_duration_sec'] = self.SIGNAL_DURATION
+                result['metadata']['num_leads'] = len(self.LEAD_NAMES)
+                if 'signals' in result_data:
+                    result['metadata']['signal_length'] = len(result_data['signals'][self.LEAD_NAMES[0]])
+            elif task == 'pipeline':
+                result['metadata']['num_classes'] = len(self.CLASS_NAMES)
                 result['metadata']['sampling_rate_hz'] = self.SAMPLING_RATE
                 result['metadata']['signal_duration_sec'] = self.SIGNAL_DURATION
                 result['metadata']['num_leads'] = len(self.LEAD_NAMES)

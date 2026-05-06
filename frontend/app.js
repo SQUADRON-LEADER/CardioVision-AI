@@ -1,5 +1,8 @@
 // API Configuration
-const API_URL = 'http://localhost:5000/api/v1';
+const isBackendOrigin = window.location.port === '5000';
+const API_URL = isBackendOrigin
+    ? `${window.location.origin}/api/v1`
+    : 'http://localhost:5000/api/v1';
 
 // DOM Elements
 const dropZone = document.getElementById('dropZone');
@@ -75,7 +78,8 @@ function handleFile(file) {
 }
 
 // Process ECG image
-processBtn.addEventListener('click', async () => {
+processBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
     if (!currentFile) return;
     
     // Show loading
@@ -87,6 +91,7 @@ processBtn.addEventListener('click', async () => {
         // Create form data
         const formData = new FormData();
         formData.append('file', currentFile);
+        formData.append('task', 'pipeline');
         formData.append('options', JSON.stringify({
             remove_grid: true,
             denoise: true,
@@ -126,8 +131,10 @@ function displayResults(data) {
     // Update metrics
     processingTime.textContent = `${data.metadata.processing_time_seconds.toFixed(2)}s`;
     
-    // Check if this is classification or digitization
-    if (data.metadata.task === 'classification' && data.prediction) {
+    // Pipeline: show diagnosis + digitized signals in one result
+    if (data.prediction && data.signals) {
+        displayPipelineResults(data);
+    } else if (data.metadata.task === 'classification' && data.prediction) {
         // Classification results
         displayClassificationResults(data);
     } else if (data.signals) {
@@ -140,6 +147,19 @@ function displayResults(data) {
     
     // Show results
     results.classList.remove('hidden');
+}
+
+// Display combined pipeline results
+function displayPipelineResults(data) {
+    const prediction = data.prediction;
+    const signalLeads = data.signals ? Object.keys(data.signals) : [];
+    const leadCount = signalLeads.length;
+    qualityScore.textContent = prediction?.confidence ? `${prediction.confidence}%` : 'N/A';
+    leadsCount.textContent = prediction?.class
+        ? `${prediction.class} (${leadCount || 0} leads digitized)`
+        : `${leadCount || 0} leads digitized`;
+
+    drawSignalChart(data.signals);
 }
 
 // Display classification results
@@ -161,7 +181,8 @@ function displayDigitizationResults(data) {
     qualityScore.textContent = data.quality_metrics?.quality_score 
         ? (data.quality_metrics.quality_score * 100).toFixed(1) + '%'
         : 'N/A';
-    leadsCount.textContent = data.metadata.num_leads;
+    const leadCount = data.metadata?.num_leads || Object.keys(data.signals || {}).length || 0;
+    leadsCount.textContent = String(leadCount);
     
     // Draw signal chart
     drawSignalChart(data.signals);
@@ -254,40 +275,84 @@ function drawSignalChart(signals) {
         ctx.stroke();
     }
     
-    // Draw signals (show first 3 leads as example)
-    const leadNames = ['I', 'II', 'III'];
-    const colors = ['#ef4444', '#f97316', '#eab308'];
-    const spacing = height / 4;
-    
+    // Draw all available leads (up to canonical 12-lead order)
+    const canonicalLeadOrder = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
+    const leadColors = {
+        I: '#ef4444',
+        II: '#f97316',
+        III: '#eab308',
+        aVR: '#22c55e',
+        aVL: '#14b8a6',
+        aVF: '#06b6d4',
+        V1: '#3b82f6',
+        V2: '#6366f1',
+        V3: '#8b5cf6',
+        V4: '#a855f7',
+        V5: '#d946ef',
+        V6: '#ec4899'
+    };
+
+    const normalizedSignals = {};
+    Object.entries(signals || {}).forEach(([k, v]) => {
+        if (!Array.isArray(v)) return;
+        const canonical = canonicalLeadOrder.find((lead) => lead.toLowerCase() === String(k).toLowerCase());
+        normalizedSignals[canonical || k] = v;
+    });
+
+    const orderedLeads = canonicalLeadOrder.filter((lead) => Array.isArray(normalizedSignals[lead]));
+    const extraLeads = Object.keys(normalizedSignals).filter((lead) => !canonicalLeadOrder.includes(lead));
+    const leadNames = [...orderedLeads, ...extraLeads];
+
+    if (leadNames.length === 0) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('No ECG lead data available', width / 2, height / 2);
+        return;
+    }
+
+    const spacing = height / (leadNames.length + 1);
+
     leadNames.forEach((lead, idx) => {
-        if (!signals[lead]) return;
-        
-        const signal = signals[lead];
+        const signal = normalizedSignals[lead];
+        if (!Array.isArray(signal) || signal.length === 0) return;
+
         const yOffset = spacing * (idx + 1);
-        const xScale = width / signal.length;
-        const yScale = spacing / 4;
-        
-        ctx.strokeStyle = colors[idx];
-        ctx.lineWidth = 2;
+        const xScale = width / Math.max(signal.length - 1, 1);
+
+        let maxAbs = 0;
+        signal.forEach((value) => {
+            const n = Number(value);
+            if (Number.isFinite(n)) {
+                maxAbs = Math.max(maxAbs, Math.abs(n));
+            }
+        });
+        const yScale = maxAbs > 0 ? Math.min((spacing * 0.35) / maxAbs, 45) : spacing * 0.2;
+
+        ctx.strokeStyle = leadColors[lead] || '#e5e7eb';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        
+
         signal.forEach((value, i) => {
+            const n = Number(value);
+            const safeValue = Number.isFinite(n) ? n : 0;
             const x = i * xScale;
-            const y = yOffset - (value * yScale);
-            
+            const y = yOffset - (safeValue * yScale);
+
             if (i === 0) {
                 ctx.moveTo(x, y);
             } else {
                 ctx.lineTo(x, y);
             }
         });
-        
+
         ctx.stroke();
-        
-        // Draw lead label
-        ctx.fillStyle = colors[idx];
+
+        // Draw lead label near left margin for each waveform row.
+        ctx.fillStyle = leadColors[lead] || '#e5e7eb';
         ctx.font = '12px Inter';
-        ctx.fillText(`Lead ${lead}`, 10, yOffset - spacing / 2 + 5);
+        ctx.textAlign = 'left';
+        ctx.fillText(`Lead ${lead}`, 10, Math.max(yOffset - spacing * 0.42, 14));
     });
 }
 
@@ -310,7 +375,34 @@ downloadCSV.addEventListener('click', () => {
     if (!currentResults) return;
     
     // Check if this is classification or digitization
-    if (currentResults.prediction) {
+    if (currentResults.prediction && currentResults.signals) {
+        // Pipeline CSV: diagnosis summary + digitized signals
+        const prediction = currentResults.prediction;
+        const signals = currentResults.signals;
+        const leadNames = Object.keys(signals);
+        const signalLength = signals[leadNames[0]].length;
+        const samplingRate = currentResults.metadata.sampling_rate_hz || 500;
+
+        let csv = 'ECG Pipeline Results\n\n';
+        csv += 'Predicted Class,' + prediction.class + '\n';
+        csv += 'Confidence (%),' + prediction.confidence + '\n';
+        csv += 'Processing Time (s),' + currentResults.metadata.processing_time_seconds + '\n\n';
+        csv += 'Time(s),' + leadNames.join(',') + '\n';
+
+        for (let i = 0; i < signalLength; i++) {
+            const time = (i / samplingRate).toFixed(4);
+            const values = leadNames.map(lead => Number(signals[lead][i]).toFixed(6));
+            csv += time + ',' + values.join(',') + '\n';
+        }
+
+        const dataBlob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ecg_pipeline_${Date.now()}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    } else if (currentResults.prediction) {
         // Classification CSV
         const prediction = currentResults.prediction;
         let csv = 'ECG Classification Results\n\n';
