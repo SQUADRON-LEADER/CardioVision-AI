@@ -94,3 +94,20 @@ class Config:
     ENABLE_CACHE = os.environ.get('ENABLE_CACHE', 'False').lower() == 'true'
     CACHE_TYPE = 'simple'
     CACHE_DEFAULT_TIMEOUT = 300
+
+
+def get_config_dict():
+    """Return a dictionary of key service configuration values.
+
+    Useful for CLI tools, tests, and runtime inspection without instantiating
+    the Flask app object.
+    """
+    keys = [
+        'HOST', 'PORT', 'UPLOAD_FOLDER', 'OUTPUT_FOLDER', 'MODEL_PATHS',
+        'DEFAULT_TASK', 'IMAGE_SIZE', 'LOG_LEVEL', 'LOG_FILE', 'DEVICE',
+        'MAX_BATCH_SIZE'
+    ]
+    cfg = {}
+    for k in keys:
+        cfg[k] = getattr(Config, k, None)
+    return cfg
