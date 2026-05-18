@@ -23,11 +23,12 @@ from flask.json.provider import DefaultJSONProvider
 
 
 # Setup logging early so import-time checks can log safely
+log_level = getattr(logging, Config.LOG_LEVEL.upper(), logging.INFO)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('ecg_service.log'),
+        logging.FileHandler(Config.LOG_FILE),
         logging.StreamHandler()
     ]
 )
